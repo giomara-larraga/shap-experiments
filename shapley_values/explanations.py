@@ -107,19 +107,18 @@ def how_to_improve_objective_i(svalues: np.ndarray, objective_i: int) -> Tuple[s
     else:
         # objective_i not in greatest conflict, look for other causes
         msg, to_keep, to_worsen = why_objective_i(svalues, objective_i)
-        # if objective_i is the cause of the worst effect, then suggest to improve it, otherwise, suggest
-        # to worsen the cause of worst effect
         if to_worsen == objective_i:
+            # if objective_i is the cause of the worst effect, then suggest to improve it, otherwise, suggest
+            # to worsen the cause of worst effect
             msg = (
-                (
-                    f"Objective {objective_i+1} was the cause of worst effect on itself. Since objective {to_keep+1} "
-                    f"had the best effect, try to keep its value as is while improving the value of objective {objective_i+1}"
-                ),
+                f"Objective {objective_i+1} was the cause of worst effect on itself. Since objective {to_keep+1} "
+                f"had the best effect, try to keep its value as is while improving the value of objective {objective_i+1}"
             )
             return msg, objective_i, -1
-        msg = msg + (
-            f"Therefore, try keeping the value of objective {to_keep+1} as is while worsening the value "
-            f"of objective {to_worsen + 1} to improve the value of objective {objective_i+1}."
-        )
+        else:
+            msg = msg + (
+                f"Therefore, try keeping the value of objective {to_keep+1} as is while worsening the value "
+                f"of objective {to_worsen + 1} to improve the value of objective {objective_i+1}."
+            )
 
-        return msg, to_keep, to_worsen
+            return msg, -1, to_worsen

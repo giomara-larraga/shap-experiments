@@ -26,10 +26,10 @@ def compute_pareto_front(problem: MOProblem, file_path: str, file_name: str):
 
 
 def main():
-    problem = test_problem_builder("DTLZ2", 5, 3)
+    problem = test_problem_builder("DTLZ2", 8, 5)
 
     file_path = str(pathlib.Path(__file__).parent.resolve())
-    file_name = "../data/DTLZ2_5x_3f.csv"
+    file_name = "../data/DTLZ2_8x_5f.csv"
 
     compute_pareto_front(problem, file_path=file_path, file_name=file_name)
     return 0
