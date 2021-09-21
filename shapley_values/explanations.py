@@ -80,12 +80,32 @@ def why_best(svalues: np.ndarray, target: np.ndarray, actual: np.ndarray) -> Tup
 
 
 def why_objective_i(svalues: np.ndarray, objective_i: int) -> Tuple[str, int, int]:
-    # given SHAP values and the index of an objective desired to be improved,
-    # look at the SHAP values for hints on which objective values have had the
-    # best and worst effects on objective_i
+    """Given SHAP values and the index of an objective to be improves, look at the SHAP values for
+    hints on which objectives values have had the best and worst effects on the desired objective.
 
-    best_effect_i = np.argmin(svalues[objective_i])
-    worst_effect_i = np.argmax(svalues[objective_i])
+    Args:
+        svalues (np.ndarray): A square matrix (2D array) with SHAP values.
+        objective_i (int): The index of the objective to be improved.
+
+    Returns:
+        Tuple[str, int, int]: A tuple containing a textual explanations (str), the index (int) of the objective with
+        the best effect, and the index (int) of the objective with the worst effect. An idex value of -1 indicates
+        that no objective had a good/bad effect.
+    
+    Note:
+        It is assumed that each row has at least one element with a non-zero element.
+    """
+    # check that an objective exists that had a positive effect
+    if np.any(svalues[objective_i] < 0):
+        best_effect_i = np.argmin(svalues[objective_i])
+    else:
+        best_effect_i = -1
+
+    # check that an objective exists that had a negative effect
+    if np.any(svalues[objective_i] > 0):
+        worst_effect_i = np.argmax(svalues[objective_i])
+    else:
+        worst_effect_i = -1
 
     return (
         (

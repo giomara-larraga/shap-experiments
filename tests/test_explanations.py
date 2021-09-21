@@ -1,4 +1,4 @@
-from shapley_values.explanations import largest_conflict, why_worst, why_best
+from shapley_values.explanations import largest_conflict, why_worst, why_best, why_objective_i
 import numpy as np
 
 
@@ -97,3 +97,25 @@ def test_why_best():
 
     assert what_mixed == 2
     assert why_mixed == 1
+
+
+def test_why_objective_i():
+    shap_values = np.array([
+        [-1, 2, 3],
+        [-2, -1, 2],
+        [-2, -2, -1]
+    ], dtype=float)
+
+    target_0 = 0
+    _, best_0, worst_0 = why_objective_i(shap_values, target_0)
+
+    assert best_0 == 0
+    assert worst_0 == 2
+
+    target_1 = 1
+    _, best_1, worst_1 = why_objective_i(shap_values, target_1)
+
+    assert best_1 == 0
+    assert worst_1 == 2
+
+    # TODO: Finish me...
