@@ -96,7 +96,7 @@ def why_objective_i(svalues: np.ndarray, objective_i: int) -> Tuple[str, int, in
         It is assumed that each row has at least one element with a non-zero element.
     """
     # check that an objective exists that had a positive effect
-    if np.any(svalues[objective_i] < 0):
+    if np.any(svalues[objective_i] <= 0):
         best_effect_i = np.argmin(svalues[objective_i])
     else:
         best_effect_i = -1
@@ -107,14 +107,23 @@ def why_objective_i(svalues: np.ndarray, objective_i: int) -> Tuple[str, int, in
     else:
         worst_effect_i = -1
 
-    return (
-        (
-            f"Objective {objective_i+1} was improved most by the value given for objective {best_effect_i+1} and "
-            f"impaired most by the value given to objective {worst_effect_i + 1}."
-        ),
-        best_effect_i,
-        worst_effect_i,
-    )
+    if best_effect_i == -1:
+        msg = (
+            f"None of the objectives had a positive effect on objective {objective_i+1}. Objective {objective_i+1} "
+            f"was impaired most by the value given to objective {worst_effect_i+1}"
+        )
+    elif worst_effect_i == -1:
+        msg = (
+            f"All of the objectives had a positive effect on objective {objective_i+1}. Objective {objective_i+1} "
+            f"was improved most by the value given to objective {best_effect_i+1}"
+        )
+    else:
+        msg = (
+                f"Objective {objective_i+1} was improved most by the value given for objective {best_effect_i+1} and "
+                f"impaired most by the value given to objective {worst_effect_i+1}."
+            )
+
+    return (msg, best_effect_i, worst_effect_i)
 
 
 def largest_conflict(svalues: np.ndarray) -> Tuple[str, int, int]:

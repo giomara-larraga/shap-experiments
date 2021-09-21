@@ -101,15 +101,15 @@ def test_why_best():
 
 def test_why_objective_i():
     shap_values = np.array([
-        [-1, 2, 3],
+        [1, 2, 3],
         [-2, -1, 2],
-        [-2, -2, -1]
+        [-2, -3, -1]
     ], dtype=float)
 
     target_0 = 0
     _, best_0, worst_0 = why_objective_i(shap_values, target_0)
 
-    assert best_0 == 0
+    assert best_0 == -1
     assert worst_0 == 2
 
     target_1 = 1
@@ -118,4 +118,8 @@ def test_why_objective_i():
     assert best_1 == 0
     assert worst_1 == 2
 
-    # TODO: Finish me...
+    target_2 = 2
+    _, best_2, worst_2 = why_objective_i(shap_values, target_2)
+
+    assert best_2 == 1
+    assert worst_2 == -1
