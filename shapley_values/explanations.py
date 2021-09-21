@@ -4,7 +4,7 @@ import numpy as np
 
 
 def why_worst(svalues: np.ndarray, target: np.ndarray, actual: np.ndarray) -> Tuple[str, int, int]:
-    """Compute the difference between target and actual values, and fint the largest positive
+    """Compute the difference between target and actual values, and find the largest positive
     discrepancy. Only look at positive values in the difference (i.e., objectives that were worse
     than desired). We care only about resulting objective values worse than the target and wish
     to explain the probable reason for the bad value.
@@ -42,20 +42,27 @@ def why_worst(svalues: np.ndarray, target: np.ndarray, actual: np.ndarray) -> Tu
 
 
 def why_best(svalues: np.ndarray, target: np.ndarray, actual: np.ndarray) -> Tuple[str, int, int]:
-    # compute diff between target and actual values, and find the smallest negative
-    # discrepancy
-    # only look at negative values in diff (i.e., objectives that were better than desired)
-    # Here we just care finding the value which was improved the most from the target value.
-    # We assume that when a value is better than the target it does not matter if it is far from the
-    # desired value.
+    """Compute the difference between target and actual values, and find the largest negative
+    discrepancy. Only look at negative values in the difference (i.e., objectives that were better
+    than desired). We care only about resulting objective values better than the target and wish
+    to explain the probable reason for the good value.
 
+    Args:
+        svalues (np.ndarray): A square matrix (2D array) with SHAP values.
+        target (np.ndarray): An array with target objective values (i.e., the reference vector)
+        actual (np.ndarray): An array with actual objective values (i.e., a projection of the references on the Pareto front)
+
+    Returns:
+        Tuple[str, int, int]: A tuple containing a textual explanation (str), an index (int)
+        representing the objective with the lowest (negative) deviation from the target, an
+        index (int) representing the objective, which was the probable reason for this deviation.
+        A value of -1 for both indices signifies that all objectives were impaired.
+    """
     diff = actual - target
     if np.all(diff > 0):
         return "All objectives were impaired compared to the desired value.", -1, -1
     mask = diff < 0
     diff[~mask] = np.inf
-
-    print(diff)
 
     min_i = np.argmin(diff)
 
