@@ -2,17 +2,41 @@ import numpy as np
 import pandas as pd
 import shap
 from shapley_values.explanations import why_best, why_objective_i, why_worst, largest_conflict, how_to_improve_objective_i
+from sklearn.preprocessing import MinMaxScaler
 from desdeo_problem.problem import DiscreteDataProblem
 from desdeo_tools.scalarization import DiscreteScalarizer
 from desdeo_tools.solver import DiscreteMinimizer
 from desdeo_tools.scalarization import SimpleASF
 
 
-def generate_missing_data(n: int, ideal: np.ndarray, nadir: np.ndarray) -> np.ndarray:
-    """ Generate n missing data by randomly sampling a uniform distribution of points between
-    the ideal and nadir.
+class Normalizer:
+    """Used to transform objective vectors to normalized form and back to original form.
     """
-    return np.hstack(tuple(np.random.uniform(low=ideal[i], high=nadir[i], size=(n, 1)) for i in range(ideal.shape[0])))
+    def __init__(self, low_limits: np.ndarray, high_limits: np.ndarray, scaler_class = MinMaxScaler):
+        self.scaler = scaler_class()
+        self.scaler.fit(np.stack((low_limits, high_limits)))
+
+    
+    def scale(self, values: np.ndarray) -> np.ndarray:
+        return self.scaler.transform(np.atleast_2d(values))
+
+    def inverse_scale(self, values: np.ndarray) -> np.ndarray:
+        return self.scaler.inverse_transform(np.atleast_2d(values))
+
+
+def generate_missing_data(n: int, low: np.ndarray, high: np.ndarray) -> np.ndarray:
+    """Generate n missing data by randomly sampling a uniform distribution of points between
+    a lower and an higher limit.
+
+    Args:
+        n (int): The number of samples to be generated.
+        low (np.ndarray): An array with the lower limit for each dimension.
+        high (np.ndarray): An array with the higher limit for each dimension.
+
+    Returns:
+        np.ndarray: A 2D array of vectors representing the missing data generated.
+    """    
+    return np.hstack(tuple(np.random.uniform(low=low[i], high=high[i], size=(n, 1)) for i in range(low.shape[0])))
 
 
 def generate_black_box(problem: DiscreteDataProblem, asf: SimpleASF) -> np.ndarray:

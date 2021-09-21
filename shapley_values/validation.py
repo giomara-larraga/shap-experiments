@@ -92,7 +92,7 @@ def generate_validation_data_global(df: pd.DataFrame, variable_names: List[str],
                 ref_point[improve_i] = ideal[improve_i]
 
 
-        # check if something is to be worsened (notive that we assume minimization)
+        # check if something is to be worsened (notice that we assume minimization)
         if worsen_i > -1:
             # change the ref_point accordingly
             ref_point[worsen_i] += ref_delta * ref_point[worsen_i]

@@ -122,3 +122,7 @@ def how_to_improve_objective_i(svalues: np.ndarray, objective_i: int) -> Tuple[s
             )
 
             return msg, -1, to_worsen
+
+
+if __name__ == "__main__":
+    pass
