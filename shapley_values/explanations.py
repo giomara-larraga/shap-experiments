@@ -4,12 +4,22 @@ import numpy as np
 
 
 def why_worst(svalues: np.ndarray, target: np.ndarray, actual: np.ndarray) -> Tuple[str, int, int]:
-    # compute diff between target and actual values, and find the largest positive
-    # discrepancy
-    # only look at positive values in diff (i.e., objectives that were worse than desired)
-    # here we care only about resulting objective values worse than the target and wish to
-    # explain the probable reason the value is so bad.
+    """Compute the difference between target and actual values, and fint the largest positive
+    discrepancy. Only look at positive values in the difference (i.e., objectives that were worse
+    than desired). We care only about resulting objective values worse than the target and wish
+    to explain the probable reason for the bad value.
 
+    Args:
+        svalues (np.ndarray): A square matrix (2D array) with SHAP values.
+        target (np.ndarray): An array with target objective values (i.e., the reference vector)
+        actual (np.ndarray): An array with actual objective values (i.e., a projection of the references on the Pareto front)
+
+    Returns:
+        Tuple[str, int, int]: A tuple containing a textual explanation (str), an index (int)
+        representing the objective with the highest (positive) deviation from the target, an
+        index (int) representing the objective, which was the probable reason for this deviation.
+        A value of -1 for both indices signifies that all objectives were improved.
+    """
     diff = actual - target
     if np.all(diff < 0):
         return "All objectives were improved compared to the desired value.", -1, -1
