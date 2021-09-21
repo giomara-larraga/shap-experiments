@@ -81,13 +81,39 @@ def why_objective_i(svalues: np.ndarray, objective_i: int) -> Tuple[str, int, in
 
 
 def largest_conflict(svalues: np.ndarray) -> Tuple[str, int, int]:
-    # look at the off-diagonal elements in the SHAP values and compare them symmetrically. Find the two elements
-    # with different signs and largest difference.
+    """Look at the off-diagonal elements in the SHAP values and compare them symmetrically. Find
+    two elements with different signs and largest absolute difference. These two elements
+    are taken to be mutually in a 'great conflict'.
 
-    # TODO: check this...
-    diff = svalues + svalues.T
+    Args:
+        svalues (np.ndarray): A square matrix (2D array) with SHAP values.
+
+    Returns:
+        Tuple[str, int, int]: A tuple containing a textual (str) explanation of the 'great conflict',
+        an index (int) indicating the first element in the pair of conflict, an index (int) indicating the
+        second pair. If both indices are -1, then no great conflict was found.
+    """
+
+    diff = np.abs(svalues - svalues.T)
+    sign_mask = np.sign(svalues) == np.sign(svalues.T)
+
+    if np.all(sign_mask):
+        # nothing is conflicting, or everything is conflicting
+        # all signs are the same, so this is safe
+        sign = np.sign(svalues)[0, 0]
+
+        if sign == -1:
+            # everything improves everything!
+            msg = f"No largest conflict found. Everything improves everything. You are too pessimistic!"
+            return msg, -1, -1
+        else:
+            # 1, everything impairs everything!
+            msg = f"No largest conflict found. Everything impairs everything. You are too optimistic!"
+            return msg, -1, -1
+
+    diff[sign_mask] = np.nan
     np.fill_diagonal(diff, -np.inf)
-    conflict_pair = np.unravel_index(np.argmax(diff), diff.shape)
+    conflict_pair = np.unravel_index(np.nanargmax(diff), diff.shape)
 
     msg = f"The largest conflict seems to be between objectives {conflict_pair[0]+1} and {conflict_pair[1]+1}."
 
