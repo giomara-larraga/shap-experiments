@@ -83,6 +83,8 @@ def why_objective_i(svalues: np.ndarray, objective_i: int) -> Tuple[str, int, in
 def largest_conflict(svalues: np.ndarray) -> Tuple[str, int, int]:
     # look at the off-diagonal elements in the SHAP values and compare them symmetrically. Find the two elements
     # with different signs and largest difference.
+
+    # TODO: check this...
     diff = svalues + svalues.T
     np.fill_diagonal(diff, -np.inf)
     conflict_pair = np.unravel_index(np.argmax(diff), diff.shape)
