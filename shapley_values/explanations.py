@@ -167,6 +167,25 @@ def largest_conflict(svalues: np.ndarray) -> Tuple[str, int, int]:
 
 
 def how_to_improve_objective_i(svalues: np.ndarray, objective_i: int) -> Tuple[str, int, int]:
+    """Determines a strategy on how a reference point, for which SHAP values have been computed for some black-box,
+    should change so that an improvement in a desired objective may result when the black-box is invoked again with
+    the changed reference point.
+
+    Args:
+        svalues (np.ndarray): A square matrix (2D array) with SHAP values.
+        objective_i (int): The index of the objective that we wish to improve.
+
+    Returns:
+        Tuple[str, int, int]: A tuple containing: a textual explanation (str),
+        an index to the reference point pointing to the objective value that
+        should be improved for the desired effect, an index to the reference
+        point pointing to the objective value which should be impaired for the
+        desired effect.
+
+    Note:
+        Minimization is assumed for all objective. I.e., by 'improvement', a decrement in
+        the related value is expected. Vice-versa for 'impairement'.
+    """
     # Look at the largest conflicts. If objective_i is among these, suggest to worsen the other.
     conflicting = largest_conflict(svalues)[1:]
 
