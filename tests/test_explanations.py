@@ -1,4 +1,4 @@
-from shapley_values.explanations import largest_conflict, why_worst, why_best, why_objective_i
+from shapley_values.explanations import largest_conflict, why_worst, why_best, why_objective_i, how_to_improve_objective_i
 import numpy as np
 
 
@@ -123,3 +123,49 @@ def test_why_objective_i():
 
     assert best_2 == 1
     assert worst_2 == -1
+
+
+def test_how_to_improve_objective_i():
+    target = np.array([5, -2, 0, 3], dtype=float)
+
+    shap_values = np.array([
+        [-1, 2, -3, 1],
+        [-2, -3, -1, 2],
+        [2, 1, 5, 3],
+        [0, 0, 0, -2]
+    ], dtype=float)
+
+    # Case nothing has improved
+    actual_worse = np.array([6, -1, 1,5])
+
+    ## Impairement not i
+    objective_i = 0
+    _, improve, impair = how_to_improve_objective_i(shap_values, objective_i, target, actual_worse)
+
+    assert improve == 0
+    assert impair == 1
+
+    ## impairement is i
+    objective_i = 2
+
+    _, improve, impair = how_to_improve_objective_i(shap_values, objective_i, target, actual_worse)
+
+    assert improve == 2
+    assert impair == 3
+
+    # Case everything has improved
+    actual_better = np.array([2, -3, -1, 2])
+
+    ## Objective i not least positive cause
+    objective_i = 0
+    _, improve, impair = how_to_improve_objective_i(shap_values, objective_i, target, actual_better)
+
+    assert improve == 0
+    assert impair == 1
+
+    ## Objective i is least positive cause
+    objective_i = 2
+    _, improve, impair = how_to_improve_objective_i(shap_values, objective_i, target, actual_better)
+
+    assert improve == 2
+    assert impair == 3

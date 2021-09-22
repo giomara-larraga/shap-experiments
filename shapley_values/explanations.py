@@ -80,7 +80,7 @@ def why_best(svalues: np.ndarray, target: np.ndarray, actual: np.ndarray) -> Tup
 
 
 def why_objective_i(svalues: np.ndarray, objective_i: int) -> Tuple[str, int, int]:
-    """Given SHAP values and the index of an objective to be improves, look at the SHAP values for
+    """Given SHAP values and the index of an objective to be improved, look at the SHAP values for
     hints on which objectives values have had the best and worst effects on the desired objective.
 
     Args:
@@ -166,7 +166,7 @@ def largest_conflict(svalues: np.ndarray) -> Tuple[str, int, int]:
     return msg, conflict_pair[0], conflict_pair[1]
 
 
-def how_to_improve_objective_i(svalues: np.ndarray, objective_i: int) -> Tuple[str, int, int]:
+def how_to_improve_objective_i_old(svalues: np.ndarray, objective_i: int) -> Tuple[str, int, int]:
     """Determines a strategy on how a reference point, for which SHAP values have been computed for some black-box,
     should change so that an improvement in a desired objective may result when the black-box is invoked again with
     the changed reference point.
@@ -215,6 +215,85 @@ def how_to_improve_objective_i(svalues: np.ndarray, objective_i: int) -> Tuple[s
             )
 
             return msg, -1, to_worsen
+
+
+def how_to_improve_objective_i(svalues: np.ndarray, objective_i: int, target: np.ndarray, actual: np.ndarray, objective_names: str = None) -> Tuple[str, int, int]:
+    """Determines a strategy on how a reference point, for which SHAP values have been computed for some black-box,
+    should change so that an improvement in a desired objective may result when the black-box is invoked again with
+    the changed reference point.
+
+    Args:
+        svalues (np.ndarray): A square matrix (2D array) with SHAP values.
+        target (np.ndarray): The objective values we wish to attain (i.e., reference point).
+        actual (np.ndarray): The actual objective values we got (i.e., a projection from the
+        reference point to the Pareto front).
+        objective_i (int): The index of the objective that we wish to improve.
+
+    Returns:
+        Tuple[str, int, int]: A tuple containing: a textual explanation (str),
+        an index to the reference point pointing to the objective value that
+        should be improved for the desired effect, an index to the reference
+        point pointing to the objective value which should be impaired for the
+        desired effect.
+
+    Note:
+        Minimization is assumed for all objective. I.e., by 'improvement', a decrement in
+        the related value is expected. Vice-versa for 'impairement'.
+
+    TODO:
+        Write the textual explanations.
+    """
+    # Set default objective names if not provided.
+    if objective_names is None:
+        objective_names = [f"Objective {i}" for i in range (1, np.squeeze(target).shape[0]+1)]
+
+    _, best_effect, worst_effect = why_objective_i(svalues, objective_i)
+    diff = target - actual
+
+    # Case: nothing has improved (everything in actual is greater than in target)
+    if np.all(diff <= 0):
+        # Impair the value of the objective with the worst effect and improve
+        # the value for objective i. If i has had the worst effect, find the next
+        # probable cause.
+        if worst_effect != objective_i:
+            # impair worst_effect, improve i
+            msg = ""
+            return msg, objective_i, worst_effect
+        else:
+            # impair second worst effect, improve i
+            # find second effect
+            msg = ""
+            row = svalues[objective_i]
+            row[objective_i] = -np.inf
+
+            second_cause = np.argmax(row)
+            return msg, objective_i, second_cause
+
+    # Case: everything has improved (everything in actual is less than in target)
+    if np.all(diff > 0):
+        # Improve the value for objective i and impair the value for the objective
+        # which had the least derisable effect on objective i (this effect can be also
+        # negative (i.e., good))
+
+        # Find the objective with the least desirable effect
+        row = svalues[objective_i]
+        first_cause = np.argmax(row)
+
+        # Check that least_i is not objective i
+        if first_cause != objective_i:
+            # improve i, impair second_cause
+            # find the second least desirable effect
+            msg = ""
+            row[objective_i] = -np.inf 
+            second_cause = np.argmax(row)
+
+            return msg, objective_i, second_cause
+        else:
+            # improve i, impair first_cause
+            msg = ""
+            return msg, objective_i, first_cause
+
+
 
 
 if __name__ == "__main__":
