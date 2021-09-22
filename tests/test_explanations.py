@@ -204,3 +204,26 @@ def test_how_to_improve_objective_i():
     assert improve == objective_i
     assert impair == 3
 
+    # Case: objective i is neither the cause of the best effect nor the worst effect
+    shap_values_itself = np.array([
+        [-10, -2, 3, -4],
+        [-2, -5, -1, 2],
+        [2, 1, 5, 3],
+        [-1, 5, -2, 8]
+    ], dtype=float)
+
+    ## objective i is the cause of the best effect
+    objective_i = 0
+
+    _, improve, impair = how_to_improve_objective_i(shap_values_itself, objective_i, target, actual_neutral)
+
+    assert improve == objective_i
+    assert impair == 2
+
+    ## objective i is the cause of the worst effect
+    objective_i = 3
+
+    _, improve, impair = how_to_improve_objective_i(shap_values_itself, objective_i, target, actual_neutral)
+
+    assert improve == objective_i
+    assert impair == 1
