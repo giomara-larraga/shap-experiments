@@ -293,6 +293,36 @@ def how_to_improve_objective_i(svalues: np.ndarray, objective_i: int, target: np
             msg = ""
             return msg, objective_i, first_cause
 
+    # Case: objective i is neither the cause of the best effect nor the worst effect
+    if objective_i != best_effect and objective_i != worst_effect:
+        # Improve the value for i, keep the value
+        # for j, and impair the value for k.
+        #
+        # Note: best_effect and worst_effect being -1 at the same time is not possible
+        # due to how why_objective_i is defined.
+
+        if best_effect == -1:
+            # no objective had a positive effect on i
+            # improve i, impair objective with greatest negative effect
+            msg = ""
+            return msg, objective_i, worst_effect
+
+        elif worst_effect == -1:
+            # no objective had a negative effect on i
+            # improve i, impair objective with least positive effect (which is not i)
+            row = svalues[objective_i]
+            row[objective_i] = -np.inf
+            least_positive = np.argmax(row)
+
+            msg = ""
+
+            return msg, objective_i, least_positive
+
+        else:
+            # some objective had a positive and some objective had a negative effect on i
+            # improve i, impair objective with worst effect
+            msg = ""
+            return msg, objective_i, worst_effect
 
 
 

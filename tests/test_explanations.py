@@ -169,3 +169,38 @@ def test_how_to_improve_objective_i():
 
     assert improve == 2
     assert impair == 3
+
+    # Case: objective i is neither the cause of the best effect nor the worst effect
+    shap_values_missing = np.array([
+        [-1, -2, -3, -4],
+        [-2, -1, -1, 2],
+        [2, 1, 5, 3],
+        [1, 5, 2, 1]
+    ], dtype=float)
+
+    actual_neutral = np.array([3, -1, -2, 0])
+
+    ## No objective had positive effect
+    objective_i = 3
+
+    _, improve, impair = how_to_improve_objective_i(shap_values_missing, objective_i, target, actual_neutral)
+
+    assert improve == objective_i
+    assert impair == 1
+
+    ## No objective had a negative effect
+    objective_i = 0
+
+    _, improve, impair = how_to_improve_objective_i(shap_values_missing, objective_i, target, actual_neutral)
+
+    assert improve == objective_i
+    assert impair == 1
+
+    ## Some objective (that is not i) had a positive effect and some had a negative
+    objective_i = 1
+
+    _, improve, impair = how_to_improve_objective_i(shap_values_missing, objective_i, target, actual_neutral)
+
+    assert improve == objective_i
+    assert impair == 3
+
