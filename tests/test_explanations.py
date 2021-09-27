@@ -127,48 +127,84 @@ def test_why_objective_i():
 
 def test_how_to_improve_objective_i():
     target = np.array([5, -2, 0, 3], dtype=float)
+    cases = []
 
+    # Case nothing has improved
     shap_values = np.array([
         [-1, 2, -3, 1],
         [-2, -3, -1, 2],
         [2, 1, 5, 3],
         [0, 0, 0, -2]
     ], dtype=float)
-
-    # Case nothing has improved
     actual_worse = np.array([6, -1, 1,5])
 
     ## Impairement not i
+    shap_values = np.array([
+        [-1, 2, -3, 1],
+        [-2, -3, -1, 2],
+        [2, 1, 5, 3],
+        [0, 0, 0, -2]
+    ], dtype=float)
     objective_i = 0
-    _, improve, impair = how_to_improve_objective_i(shap_values, objective_i, target, actual_worse)
+    msg, improve, impair, case = how_to_improve_objective_i(shap_values, objective_i, target, actual_worse)
 
     assert improve == 0
     assert impair == 1
+    assert len(msg) > 0
+    assert case == 0
+    cases.append(case)
 
     ## impairement is i
+    shap_values = np.array([
+        [-1, 2, -3, 1],
+        [-2, -3, -1, 2],
+        [2, 1, 5, 3],
+        [0, 0, 0, -2]
+    ], dtype=float)
     objective_i = 2
 
-    _, improve, impair = how_to_improve_objective_i(shap_values, objective_i, target, actual_worse)
+    msg, improve, impair, case = how_to_improve_objective_i(shap_values, objective_i, target, actual_worse)
 
     assert improve == 2
     assert impair == 3
+    assert len(msg) > 0
+    assert case == 1
+    cases.append(case)
 
     # Case everything has improved
+    shap_values = np.array([
+        [-1, 2, -3, 1],
+        [-2, -3, -1, 2],
+        [2, 1, 5, 3],
+        [0, 0, 0, -2]
+    ], dtype=float)
     actual_better = np.array([2, -3, -1, 2])
 
     ## Objective i not least positive cause
     objective_i = 0
-    _, improve, impair = how_to_improve_objective_i(shap_values, objective_i, target, actual_better)
+    msg, improve, impair, case = how_to_improve_objective_i(shap_values, objective_i, target, actual_better)
 
     assert improve == 0
     assert impair == 1
+    assert len(msg) > 0
+    assert case == 3
+    cases.append(case)
 
     ## Objective i is least positive cause
+    shap_values = np.array([
+        [-1, 2, -3, 1],
+        [-2, -3, -1, 2],
+        [2, 1, 5, 3],
+        [0, 0, 0, -2]
+    ], dtype=float)
     objective_i = 2
-    _, improve, impair = how_to_improve_objective_i(shap_values, objective_i, target, actual_better)
+    msg, improve, impair, case = how_to_improve_objective_i(shap_values, objective_i, target, actual_better)
 
     assert improve == 2
     assert impair == 3
+    assert len(msg) > 0
+    assert case == 2
+    cases.append(case)
 
     # Case: objective i is neither the cause of the best effect nor the worst effect
     shap_values_missing = np.array([
@@ -183,26 +219,47 @@ def test_how_to_improve_objective_i():
     ## No objective had positive effect
     objective_i = 3
 
-    _, improve, impair = how_to_improve_objective_i(shap_values_missing, objective_i, target, actual_neutral)
+    msg, improve, impair, case = how_to_improve_objective_i(shap_values_missing, objective_i, target, actual_neutral)
 
     assert improve == objective_i
     assert impair == 1
+    assert len(msg) > 0
+    assert case == 4
+    cases.append(case)
 
     ## No objective had a negative effect
+    shap_values_missing = np.array([
+        [-1, -2, -3, -4],
+        [-2, -1, -1, 2],
+        [2, 1, 5, 3],
+        [1, 5, 2, 1]
+    ], dtype=float)
     objective_i = 0
 
-    _, improve, impair = how_to_improve_objective_i(shap_values_missing, objective_i, target, actual_neutral)
+    msg, improve, impair, case = how_to_improve_objective_i(shap_values_missing, objective_i, target, actual_neutral)
 
     assert improve == objective_i
     assert impair == 1
+    assert len(msg) > 0 
+    assert case == 5
+    cases.append(case)
 
     ## Some objective (that is not i) had a positive effect and some had a negative
+    shap_values_missing = np.array([
+        [-1, -2, -3, -4],
+        [-2, -1, -1, 2],
+        [2, 1, 5, 3],
+        [1, 5, 2, 1]
+    ], dtype=float)
     objective_i = 1
 
-    _, improve, impair = how_to_improve_objective_i(shap_values_missing, objective_i, target, actual_neutral)
+    msg, improve, impair, case = how_to_improve_objective_i(shap_values_missing, objective_i, target, actual_neutral)
 
     assert improve == objective_i
     assert impair == 3
+    assert len(msg) > 0
+    assert case == 6
+    cases.append(case)
 
     # Case: objective i is neither the cause of the best effect nor the worst effect
     shap_values_itself = np.array([
@@ -215,18 +272,30 @@ def test_how_to_improve_objective_i():
     ## objective i is the cause of the best effect
     objective_i = 0
 
-    _, improve, impair = how_to_improve_objective_i(shap_values_itself, objective_i, target, actual_neutral)
+    msg, improve, impair, case = how_to_improve_objective_i(shap_values_itself, objective_i, target, actual_neutral)
 
     assert improve == objective_i
     assert impair == 2
+    assert len(msg) > 0
+    assert case == 9
+    cases.append(case)
 
     ## objective i is the cause of the worst effect
+    shap_values_itself = np.array([
+        [-10, -2, 3, -4],
+        [-2, -5, -1, 2],
+        [2, 1, 5, 3],
+        [-1, 5, -2, 8]
+    ], dtype=float)
     objective_i = 3
 
-    _, improve, impair = how_to_improve_objective_i(shap_values_itself, objective_i, target, actual_neutral)
+    msg, improve, impair, case = how_to_improve_objective_i(shap_values_itself, objective_i, target, actual_neutral)
 
     assert improve == objective_i
     assert impair == 1
+    assert len(msg) > 0
+    assert case == 7
+    cases.append(case)
 
     # Case: no best effect exists
     shap_values_no_best = np.array([
@@ -238,10 +307,13 @@ def test_how_to_improve_objective_i():
 
     objective_i = 0
 
-    _, improve, impair = how_to_improve_objective_i(shap_values_no_best, objective_i, target, actual_neutral)
+    msg, improve, impair, case = how_to_improve_objective_i(shap_values_no_best, objective_i, target, actual_neutral)
 
     assert improve == objective_i
     assert impair == 2
+    assert len(msg) > 0
+    assert case == 4
+    cases.append(case)
 
     # Case: no worst effect exists
     shap_values_no_worst = np.array([
@@ -253,11 +325,13 @@ def test_how_to_improve_objective_i():
 
     objective_i = 1
 
-    _, improve, impair = how_to_improve_objective_i(shap_values_no_worst, objective_i, target, actual_neutral)
-
+    msg, improve, impair, case = how_to_improve_objective_i(shap_values_no_worst, objective_i, target, actual_neutral)
 
     assert improve == objective_i
     assert impair == 2
+    assert len(msg) > 0
+    assert case == 8
+    cases.append(case)
 
     # Case: no best effect, i is the cause of the worst effect
     shap_values_no_best_self = np.array([
@@ -269,11 +343,14 @@ def test_how_to_improve_objective_i():
 
     objective_i = 0
 
-    _, improve, impair = how_to_improve_objective_i(shap_values_no_best_self, objective_i, target, actual_neutral)
+    msg, improve, impair, case = how_to_improve_objective_i(shap_values_no_best_self, objective_i, target, actual_neutral)
 
 
     assert improve == objective_i
     assert impair == 2
+    assert len(msg) > 0
+    assert case == 7
+    cases.append(case)
 
     # Case: no worst effect, i is itself the least positive effect
     shap_values_no_worst_self = np.array([
@@ -285,8 +362,14 @@ def test_how_to_improve_objective_i():
 
     objective_i = 3
 
-    _, improve, impair = how_to_improve_objective_i(shap_values_no_worst_self, objective_i, target, actual_neutral)
+    msg, improve, impair, case= how_to_improve_objective_i(shap_values_no_worst_self, objective_i, target, actual_neutral)
 
 
     assert improve == objective_i
     assert impair == 2
+    assert len(msg) > 0
+    assert case == 5
+    cases.append(case)
+
+    # check that all cases were present at least once
+    assert all([c in set(cases) for c in [0,1,2,3,4,5,6,7,8,9]])
