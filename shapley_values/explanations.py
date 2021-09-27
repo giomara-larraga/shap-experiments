@@ -323,6 +323,30 @@ def how_to_improve_objective_i(svalues: np.ndarray, objective_i: int, target: np
             msg = ""
             return msg, objective_i, worst_effect
 
+    # Case: no best effect exists (i.e., no negative values in svalues relevant to objective_i)
+    if best_effect == -1:
+        # improve i, impair the objective with the least positive effect i
+        # i cannot be least_positive
+        row = svalues[objective_i]
+        row[objective_i] = -np.inf
+        least_positive = np.argmax(row)
+
+        msg = ""
+        return msg, objective_i, least_positive
+
+    # Case: no worst effect exists (i.e., no positive values in svalues relevant to objective_i)
+    if worst_effect == -1:
+        # improve i, impair the objective with the least positive effect on i
+        # i cannot be least_positive
+        row = svalues[objective_i]
+        row[objective_i] = -np.inf
+        least_positive = np.argmax(row)
+
+        msg = ""
+        return msg, objective_i, least_positive
+
+    # From here on, objective_i is either the cause of the worst of best effect
+
     # Case: objective i is the cause of the best effect
     if objective_i == best_effect:
         # improve i, impair objective with worst effect
@@ -339,6 +363,9 @@ def how_to_improve_objective_i(svalues: np.ndarray, objective_i: int, target: np
 
         msg = ""
         return msg, objective_i, second_worst
+
+
+    return "Impossible outcome", -1, -1
 
 
 if __name__ == "__main__":
