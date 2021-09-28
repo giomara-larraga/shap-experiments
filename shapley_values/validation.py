@@ -78,7 +78,7 @@ def generate_validation_data_global(df: pd.DataFrame, variable_names: List[str],
         # check the Shapley values and figure out how to improve a random objective (zero indexed)
         to_be_improved = np.random.randint(0, n_objectives)
 
-        explanation, improve_i, worsen_i = how_to_improve_objective_i(shap_values, to_be_improved)
+        explanation, improve_i, worsen_i, _ = how_to_improve_objective_i(shap_values, to_be_improved, ref_point, solution)
 
         # save the original ref_point before modifying it
         original_ref_point = np.copy(ref_point)
@@ -86,7 +86,7 @@ def generate_validation_data_global(df: pd.DataFrame, variable_names: List[str],
         # check if something is to be improved and improve it (notice that we assume minimization)
         if improve_i > -1:
             # change the ref_point accordingly
-            ref_point[improve_i] -= ref_delta * ref_point[improve_i]
+            ref_point[improve_i] -= ref_delta * (nadir[improve_i] - ideal[improve_i])
             # if the new value is less than the ideal value, then set the new value to the ideal value
             if ref_point[improve_i] < ideal[improve_i]:
                 ref_point[improve_i] = ideal[improve_i]
@@ -95,7 +95,8 @@ def generate_validation_data_global(df: pd.DataFrame, variable_names: List[str],
         # check if something is to be worsened (notice that we assume minimization)
         if worsen_i > -1:
             # change the ref_point accordingly
-            ref_point[worsen_i] += ref_delta * ref_point[worsen_i]
+            # ref_point[worsen_i] += ref_delta * ref_point[worsen_i]
+            ref_point[worsen_i] += ref_delta * (nadir[worsen_i] - ideal[worsen_i])
             # if the new value is more than the nadir value, then set the new value to the nadir value
             if ref_point[worsen_i] > nadir[worsen_i]:
                 ref_point[worsen_i] = nadir[worsen_i]
@@ -136,10 +137,14 @@ def generate_validation_data_global(df: pd.DataFrame, variable_names: List[str],
     
     print(f"Out of {n_runs} runs {n_runs - fail_count} succeeded.")
 
-    data.to_excel("/home/kilo/Downloads/run_DTLZ2_5_objectives_n_5000_missing-data_500_delta_30.xlsx")
+    # data.to_excel("/home/kilo/Downloads/run_DTLZ2_5_objectives_n_5000_missing-data_500_delta_30.xlsx")
     
 
 
 if __name__ == "__main__":
-    df = pd.read_csv("./data/DTLZ2_8x_5f.csv")
-    generate_validation_data_global(df, ["x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8"], ["f1", "f2", "f3", "f4", "f5"], n_runs=5000, n_missing_data=500, ref_delta=0.3)
+    # df = pd.read_csv("./data/DTLZ2_8x_5f.csv")
+    # generate_validation_data_global(df, ["x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8"], ["f1", "f2", "f3", "f4", "f5"], n_runs=500, n_missing_data=200, ref_delta=0.2)
+
+    df = pd.read_csv("./data/river_pollution_2500.csv")
+    # OBS! this is with _global_ missing data!!!
+    generate_validation_data_global(df, ["x_1", "x_2"], ["f_1", "f_2", "f_3", "f_4", "f_5"], n_runs=500, n_missing_data=200, ref_delta=0.1)
