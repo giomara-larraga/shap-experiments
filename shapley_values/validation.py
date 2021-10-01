@@ -5,14 +5,14 @@ import shap
 from typing import List
 
 from shapley_values.explanations import why_best, why_objective_i, why_worst, largest_conflict, how_to_improve_objective_i
-from shapley_values.utilities import generate_missing_data, generate_black_box
+from shapley_values.utilities import generate_missing_data,generate_missing_data_even, generate_black_box, Normalizer
 from desdeo_problem.problem import DiscreteDataProblem
 # from desdeo_tools.scalarization import DiscreteScalarizer
 # from desdeo_tools.solver import DiscreteMinimizer
-from desdeo_tools.scalarization import SimpleASF
+from desdeo_tools.scalarization import SimpleASF, PointMethodASF
 
 
-def generate_validation_data_global(df: pd.DataFrame, variable_names: List[str], objective_names: List[str], n_missing_data: int = 200, n_runs: int = 10, ref_delta: float = 0.1):
+def generate_validation_data_global(df: pd.DataFrame, variable_names: List[str], objective_names: List[str], n_missing_data: int = 200, n_runs: int = 10, ref_delta: float = 0.1, file_name: str = ""):
     pareto_f = df.to_numpy()
 
     n_objectives = len(objective_names)
@@ -21,7 +21,8 @@ def generate_validation_data_global(df: pd.DataFrame, variable_names: List[str],
 
     problem = DiscreteDataProblem(df, variable_names, objective_names, nadir, ideal)
 
-    asf = SimpleASF(np.array([1 for _ in range(n_objectives)]))
+    # asf = SimpleASF(np.array([1 for _ in range(n_objectives)]))
+    asf = PointMethodASF(nadir, ideal)
 
     bb = generate_black_box(problem, asf)
 
@@ -46,39 +47,44 @@ def generate_validation_data_global(df: pd.DataFrame, variable_names: List[str],
             ["Index of objective to be worsened in the reference point"] +
             list(f"New ref point based on suggestion f_{i}" for i in range(1, n_objectives+1)) +
             list(f"New solution based on new ref point f_{i}" for i in range(1, n_objectives+1)) +
-            ["Was the desired effect achieved?"]
+            ["Was the desired effect achieved?"] +
+            ["Case identifier"] +
+            ["Change in reference point values (multiplier w.r.t. nadir - ideal)"]
         )
     )
 
     fail_count = 0
 
+    low = ideal
+    high = nadir
+    # nadir always > ideal
+    delta = ref_delta * (nadir - ideal)
+
+    normalizer = Normalizer(ideal, nadir)
+
     while run_i < n_runs:
-        print(f"Run {run_i+1} our of {n_runs}...")
+        print(f"Run {run_i+1} out of {n_runs}...")
 
         # generate a random reference point between the ideal and nadir
         ref_point = np.array([np.random.uniform(low=ideal[i], high=nadir[i]) for i in range(ideal.shape[0])])
         
-        # TODO: for now, the missing data is always generated between the ideal and nadir, for a problem with
-        # a non-convex, non-linear Pareto front, the missing data is best generated around the
-        # given reference point to capture the local nature of the front... Doing what is done now, if fine for a problem
-        # like DTLZ2.
-        low = ideal
-        high = nadir
-        missing_data = generate_missing_data(n_missing_data, low, high)
+        # We generate data also outside the area dicated by the ideal and nadir points to have more accurate explanations
+        # for reference point that reside on the edge of the area.
+        # missing_data = generate_missing_data(n_missing_data, low-delta, high+delta)
+        missing_data = generate_missing_data_even(n_missing_data, low-delta, high+delta)
 
-        # we need a new explainer since in the general case the missing_data may change based on the given reference point.
         explainer = shap.KernelExplainer(bb, missing_data)
 
         # the computed solution by the black box
         solution = bb(np.atleast_2d(ref_point))
 
-        # comput the Shapley values for the given reference point
-        shap_values = np.array(explainer.shap_values(ref_point))
+        # compute the Shapley values for the given reference point
+        shap_values = normalizer.scale(np.array(explainer.shap_values(ref_point)))
 
         # check the Shapley values and figure out how to improve a random objective (zero indexed)
         to_be_improved = np.random.randint(0, n_objectives)
 
-        explanation, improve_i, worsen_i, _ = how_to_improve_objective_i(shap_values, to_be_improved, ref_point, solution)
+        explanation, improve_i, worsen_i, case_i = how_to_improve_objective_i(shap_values, to_be_improved, ref_point, solution)
 
         # save the original ref_point before modifying it
         original_ref_point = np.copy(ref_point)
@@ -86,20 +92,14 @@ def generate_validation_data_global(df: pd.DataFrame, variable_names: List[str],
         # check if something is to be improved and improve it (notice that we assume minimization)
         if improve_i > -1:
             # change the ref_point accordingly
-            ref_point[improve_i] -= ref_delta * (nadir[improve_i] - ideal[improve_i])
-            # if the new value is less than the ideal value, then set the new value to the ideal value
-            if ref_point[improve_i] < ideal[improve_i]:
-                ref_point[improve_i] = ideal[improve_i]
+            ref_point[improve_i] -= delta[improve_i]
 
 
         # check if something is to be worsened (notice that we assume minimization)
         if worsen_i > -1:
             # change the ref_point accordingly
             # ref_point[worsen_i] += ref_delta * ref_point[worsen_i]
-            ref_point[worsen_i] += ref_delta * (nadir[worsen_i] - ideal[worsen_i])
-            # if the new value is more than the nadir value, then set the new value to the nadir value
-            if ref_point[worsen_i] > nadir[worsen_i]:
-                ref_point[worsen_i] = nadir[worsen_i]
+            ref_point[worsen_i] += delta[worsen_i]
 
 
         # compute the new solution based on the modified ref_point
@@ -128,7 +128,9 @@ def generate_validation_data_global(df: pd.DataFrame, variable_names: List[str],
             [worsen_i + 1 if worsen_i != -1 else -1] +
             ref_point.squeeze().tolist() +
             new_solution.squeeze().tolist() +
-            [effect_was_achieved]
+            [effect_was_achieved] +
+            [case_i] +
+            [delta]
         )
 
         data.loc[run_i] = datum
@@ -137,7 +139,7 @@ def generate_validation_data_global(df: pd.DataFrame, variable_names: List[str],
     
     print(f"Out of {n_runs} runs {n_runs - fail_count} succeeded.")
 
-    # data.to_excel("/home/kilo/Downloads/run_DTLZ2_5_objectives_n_5000_missing-data_500_delta_30.xlsx")
+    data.to_excel(file_name)
     
 
 
@@ -145,6 +147,15 @@ if __name__ == "__main__":
     # df = pd.read_csv("./data/DTLZ2_8x_5f.csv")
     # generate_validation_data_global(df, ["x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8"], ["f1", "f2", "f3", "f4", "f5"], n_runs=500, n_missing_data=200, ref_delta=0.2)
 
-    df = pd.read_csv("./data/river_pollution_2500.csv")
+    df = pd.read_csv("./data/river_pollution_5000.csv")
     # OBS! this is with _global_ missing data!!!
-    generate_validation_data_global(df, ["x_1", "x_2"], ["f_1", "f_2", "f_3", "f_4", "f_5"], n_runs=500, n_missing_data=200, ref_delta=0.1)
+    # fname ="/home/kilo/workspace/shap-experiments/_results/run_river_n_1000_missing_16807_even_delta_10.xlsx" 
+    # generate_validation_data_global(df, ["x_1", "x_2"], ["f_1", "f_2", "f_3", "f_4", "f_5"], n_runs=1000, n_missing_data=7, ref_delta=0.10, file_name=fname)
+
+    deltas = [0.02, 0.04, 0.06, 0.08, 0.10, 0.12, 0.14, 0.16, 0.18, 0.20]
+    missings = [2, 3, 4, 5, 6, 7]
+    n = 1000
+    for m in missings:
+        for d in deltas:
+            fname =f"/home/kilo/workspace/shap-experiments/_results/run_river_5000_n_{n}_missing_{m**5}_even_delta_{int(d*100)}.xlsx" 
+            generate_validation_data_global(df, ["x_1", "x_2"], ["f_1", "f_2", "f_3", "f_4", "f_5"], n_runs=n, n_missing_data=m, ref_delta=d, file_name=fname)

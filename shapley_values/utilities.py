@@ -39,6 +39,25 @@ def generate_missing_data(n: int, low: np.ndarray, high: np.ndarray) -> np.ndarr
     return np.hstack(tuple(np.random.uniform(low=low[i], high=high[i], size=(n, 1)) for i in range(low.shape[0])))
 
 
+def generate_missing_data_even(n: int, low: np.ndarray, high: np.ndarray) -> np.ndarray:
+    """Generate n missing data by evenly sampling the points between
+    a lower and an higher limit for each dimension.
+
+    Args:
+        n (int): The number of samples to be generated (this is an
+            approximation, n^k points will be generated where k is the dimension
+            of the low and high arrays.
+        low (np.ndarray): An array with the lower limit for each dimension.
+        high (np.ndarray): An array with the higher limit for each dimension.
+
+    Returns:
+        np.ndarray: A 2D array of vectors representing the missing data generated.
+    """    
+    # return np.hstack(tuple(np.random.uniform(low=low[i], high=high[i], size=(n, 1)) for i in range(low.shape[0])))
+    steps = (high - low) / (n-1)
+    return np.mgrid[[slice(l, h+step/2, step) for l, h, step in zip(low, high, steps)]].reshape(low.shape[0], -1).T
+
+
 def generate_black_box(problem: DiscreteDataProblem, asf: SimpleASF) -> np.ndarray:
     """Given a 2D array of reference points, a problem, and an achivevement scalarizing function,
     finds a set of solutions minimizing the achievement scalarizing function for each given

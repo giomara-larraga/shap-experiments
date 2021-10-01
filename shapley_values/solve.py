@@ -32,9 +32,9 @@ def main():
     problem = river_pollution_problem()
 
     file_path = str(pathlib.Path(__file__).parent.resolve())
-    file_name = "../data/river_pollution_2500.csv"
+    file_name = "../data/river_pollution_5000.csv"
 
-    compute_pareto_front(problem, file_path=file_path, file_name=file_name)
+    compute_pareto_front(problem, file_path=file_path, file_name=file_name, pop_size=5000)
     return 0
 
 
