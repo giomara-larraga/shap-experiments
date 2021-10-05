@@ -1,18 +1,32 @@
+from desdeo_problem.problem.Problem import MOProblem
 import numpy as np
 from numpy.core.fromnumeric import squeeze
 import pandas as pd
 import shap
-from typing import List
+from typing import List, Optional
 
 from shapley_values.explanations import why_best, why_objective_i, why_worst, largest_conflict, how_to_improve_objective_i
 from shapley_values.utilities import generate_missing_data,generate_missing_data_even, generate_black_box, Normalizer
+from shapley_values.problems import river_pollution_problem
 from desdeo_problem.problem import DiscreteDataProblem
-# from desdeo_tools.scalarization import DiscreteScalarizer
-# from desdeo_tools.solver import DiscreteMinimizer
+from desdeo_tools.scalarization import Scalarizer
+from desdeo_tools.solver import ScalarMinimizer
 from desdeo_tools.scalarization import SimpleASF, PointMethodASF
 
 
-def generate_validation_data_global(df: pd.DataFrame, variable_names: List[str], objective_names: List[str], n_missing_data: int = 200, n_runs: int = 10, ref_delta: float = 0.1, file_name: str = ""):
+def solve_with_ref_point(problem: MOProblem, ref_point: np.ndarray, asf = PointMethodASF):
+    scalarizer = Scalarizer(lambda x: problem.evaluate(x).objectives, asf, scalarizer_args={"reference_point": np.atleast_2d(ref_point)})
+    minimizer = ScalarMinimizer(scalarizer, problem.get_variable_bounds(), method="scipy_de")
+
+    res = minimizer.minimize((problem.get_variable_lower_bounds() + problem.get_variable_upper_bounds()) / 2)
+
+    print(res["x"])
+    objectives = problem.evaluate(res["x"]).objectives
+        
+    return objectives
+
+
+def generate_validation_data_global(df: pd.DataFrame, variable_names: List[str], objective_names: List[str], n_missing_data: int = 200, n_runs: int = 10, ref_delta: float = 0.1, file_name: str = "", original_problem: Optional[MOProblem] = None):
     pareto_f = df.to_numpy()
 
     n_objectives = len(objective_names)
@@ -76,7 +90,10 @@ def generate_validation_data_global(df: pd.DataFrame, variable_names: List[str],
         explainer = shap.KernelExplainer(bb, missing_data)
 
         # the computed solution by the black box
-        solution = bb(np.atleast_2d(ref_point))
+        if original_problem is None:
+            solution = bb(np.atleast_2d(ref_point))
+        else:
+            solution = solve_with_ref_point(original_problem, ref_point, asf)
 
         # compute the Shapley values for the given reference point
         shap_values = normalizer.scale(np.array(explainer.shap_values(ref_point)))
@@ -103,7 +120,10 @@ def generate_validation_data_global(df: pd.DataFrame, variable_names: List[str],
 
 
         # compute the new solution based on the modified ref_point
-        new_solution = bb(np.atleast_2d(ref_point))
+        if original_problem is None:
+            new_solution = bb(np.atleast_2d(ref_point))
+        else:
+            new_solution = solve_with_ref_point(original_problem, ref_point, asf)
 
         # check if the desired effect was achieved
         if new_solution.squeeze()[to_be_improved] < solution.squeeze()[to_be_improved]:
@@ -147,15 +167,18 @@ if __name__ == "__main__":
     # df = pd.read_csv("./data/DTLZ2_8x_5f.csv")
     # generate_validation_data_global(df, ["x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8"], ["f1", "f2", "f3", "f4", "f5"], n_runs=500, n_missing_data=200, ref_delta=0.2)
 
-    df = pd.read_csv("./data/river_pollution_5000.csv")
+    mop = river_pollution_problem()
+
+    df = pd.read_csv("./data/river_pollution_10000.csv")
     # OBS! this is with _global_ missing data!!!
     # fname ="/home/kilo/workspace/shap-experiments/_results/run_river_n_1000_missing_16807_even_delta_10.xlsx" 
     # generate_validation_data_global(df, ["x_1", "x_2"], ["f_1", "f_2", "f_3", "f_4", "f_5"], n_runs=1000, n_missing_data=7, ref_delta=0.10, file_name=fname)
 
     deltas = [0.02, 0.04, 0.06, 0.08, 0.10, 0.12, 0.14, 0.16, 0.18, 0.20]
-    missings = [2, 3, 4, 5, 6, 7]
+    # missings = [2, 3, 4, 5, 6, 7]
+    missings = [4]
     n = 1000
     for m in missings:
         for d in deltas:
-            fname =f"/home/kilo/workspace/shap-experiments/_results/run_river_5000_n_{n}_missing_{m**5}_even_delta_{int(d*100)}.xlsx" 
-            generate_validation_data_global(df, ["x_1", "x_2"], ["f_1", "f_2", "f_3", "f_4", "f_5"], n_runs=n, n_missing_data=m, ref_delta=d, file_name=fname)
+            fname =f"/home/kilo/workspace/shap-experiments/_results/run_river_5000_n_{n}_missing_{m**5}_even_delta_{int(d*100)}_original.xlsx" 
+            generate_validation_data_global(df, ["x_1", "x_2"], ["f_1", "f_2", "f_3", "f_4", "f_5"], n_runs=n, n_missing_data=m, ref_delta=d, file_name=fname, original_problem=mop)
