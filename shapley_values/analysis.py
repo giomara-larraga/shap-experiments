@@ -116,8 +116,8 @@ plt.show()
 
 if __name__ == "__main__":
     n_objectives = 5
-    d = 20
-    f_name = f"run_river_5000_n_1000_missing_1024_even_delta_{d}_original.xlsx"
+    d = 8
+    f_name = f"run_river_5000_n_100_missing_3125_even_delta_{d}_original.xlsx"
     df = pd.read_excel(f"{DATA_DIR}/{f_name}", engine="openpyxl")
 
     original_rps = get_original_rps(df, "f_", 5)

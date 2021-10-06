@@ -891,6 +891,18 @@ optional = false
 python-versions = ">=3.5"
 
 [[package]]
+name = "pygmo"
+version = "2.16.1"
+description = "Parallel optimisation for Python"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+cloudpickle = "*"
+numpy = "*"
+
+[[package]]
 name = "pyparsing"
 version = "2.4.7"
 description = "Python parsing module"
@@ -1226,7 +1238,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7, <3.10"
-content-hash = "939861da086d5a06cbd7c4999f4cacf72673b2c51e9b029e58b747ce321b7571"
+content-hash = "7f87c3168699fd6c0ae6702e1a7352845a782d4150d696c65971cee0c8a77adc"
 
 [metadata.files]
 anyio = [
@@ -1943,6 +1955,11 @@ pyflakes = [
 pygments = [
     {file = "Pygments-2.10.0-py3-none-any.whl", hash = "sha256:b8e67fe6af78f492b3c4b3e2970c0624cbf08beb1e493b2c99b9fa1b67a20380"},
     {file = "Pygments-2.10.0.tar.gz", hash = "sha256:f398865f7eb6874156579fdf36bc840a03cab64d1cde9e93d68f46a425ec52c6"},
+]
+pygmo = [
+    {file = "pygmo-2.16.1-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:56b47df8fadf29e7177858e7e7f2340d823854563a0de62ee7c1ccedc288e8ba"},
+    {file = "pygmo-2.16.1-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:857b57adfe8da346fff210ae6a0897f68025d927271f792a4bea8176a2d82a25"},
+    {file = "pygmo-2.16.1-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:e8c929f76816dad775f42935089d54928ca761f0ed7c9beeda9fe929c6e3938b"},
 ]
 pyparsing = [
     {file = "pyparsing-2.4.7-py2.py3-none-any.whl", hash = "sha256:ef9d7589ef3c200abe66653d3f1ab1033c3c419ae9b9bdb1240a85b024efc88b"},
