@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import shap
+from typing import Optional
 from shapley_values.explanations import why_best, why_objective_i, why_worst, largest_conflict, how_to_improve_objective_i
 from sklearn.preprocessing import MinMaxScaler
 from desdeo_problem.problem import DiscreteDataProblem
@@ -58,14 +59,14 @@ def generate_missing_data_even(n: int, low: np.ndarray, high: np.ndarray) -> np.
     return np.mgrid[[slice(l, h+step/2, step) for l, h, step in zip(low, high, steps)]].reshape(low.shape[0], -1).T
 
 
-def generate_black_box(problem: DiscreteDataProblem, asf: SimpleASF) -> np.ndarray:
+def generate_black_box(problem: DiscreteDataProblem, asf: SimpleASF, normalizer: Optional[Normalizer] = None) -> np.ndarray:
     """Given a 2D array of reference points, a problem, and an achivevement scalarizing function,
     finds a set of solutions minimizing the achievement scalarizing function for each given
     reference point.
 
     TODO: add minimizer_args as kwarg
     """
-    def black_box(ref_points: np.ndarray, problem: DiscreteDataProblem = problem, asf: SimpleASF = asf) -> np.ndarray:
+    def black_box(ref_points: np.ndarray, problem: DiscreteDataProblem = problem, asf: SimpleASF = asf, normalizer: Optional[Normalizer] = normalizer) -> np.ndarray:
         res = np.zeros(ref_points.shape)
 
         for (i, ref_point) in enumerate(ref_points):
@@ -75,7 +76,11 @@ def generate_black_box(problem: DiscreteDataProblem, asf: SimpleASF) -> np.ndarr
 
             res[i] = problem.objectives[index]
 
+        if normalizer is None:
+            # original scale
             return res
+        else:
+            return normalizer.scale(res)
 
     return black_box
 

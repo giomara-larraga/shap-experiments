@@ -26,7 +26,7 @@ def solve_with_ref_point(problem: MOProblem, ref_point: np.ndarray, asf = PointM
     return objectives
 
 
-def generate_validation_data_global(df: pd.DataFrame, variable_names: List[str], objective_names: List[str], n_missing_data: int = 200, n_runs: int = 10, ref_delta: float = 0.1, file_name: str = "", original_problem: Optional[MOProblem] = None):
+def generate_validation_data_global(df: pd.DataFrame, variable_names: List[str], objective_names: List[str], n_missing_data: int = 200, n_runs: int = 10, ref_delta: float = 0.1, file_name: str = "", original_problem: Optional[MOProblem] = None, improve_target: bool = True):
     pareto_f = df.to_numpy()
 
     n_objectives = len(objective_names)
@@ -107,7 +107,7 @@ def generate_validation_data_global(df: pd.DataFrame, variable_names: List[str],
         original_ref_point = np.copy(ref_point)
 
         # check if something is to be improved and improve it (notice that we assume minimization)
-        if improve_i > -1:
+        if improve_target and improve_i > -1:
             # change the ref_point accordingly
             ref_point[improve_i] -= delta[improve_i]
 
@@ -180,5 +180,5 @@ if __name__ == "__main__":
     n = 1000
     for m in missings:
         for d in deltas:
-            fname =f"/home/kilo/workspace/shap-experiments/_results/run_river_5000_n_{n}_missing_{m**5}_even_delta_{int(d*100)}_original.xlsx" 
-            generate_validation_data_global(df, ["x_1", "x_2"], ["f_1", "f_2", "f_3", "f_4", "f_5"], n_runs=n, n_missing_data=m, ref_delta=d, file_name=fname, original_problem=mop)
+            fname =f"/home/kilo/workspace/shap-experiments/_results/run_river_5000_n_{n}_missing_{m**5}_even_delta_{int(d*100)}_noimprove_original.xlsx" 
+            generate_validation_data_global(df, ["x_1", "x_2"], ["f_1", "f_2", "f_3", "f_4", "f_5"], n_runs=n, n_missing_data=m, ref_delta=d, file_name=fname, improve_target=False, original_problem=mop)
