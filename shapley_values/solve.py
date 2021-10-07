@@ -7,7 +7,7 @@ from desdeo_emo.EAs import NSGAIII, MOEA_D, RVEA, PPGA
 from desdeo_emo.population import Population
 from desdeo_problem.problem import MOProblem
 from desdeo_problem.testproblems import test_problem_builder
-from shapley_values.problems import river_pollution_problem
+from shapley_values.problems import river_pollution_problem, car_crash_problem
 
 
 def compute_pareto_front(
@@ -15,6 +15,7 @@ def compute_pareto_front(
 ):
     """Compute a representation of the Pareto optimal front for an MOProblem and save it to a file."""
     evolvers = []
+
     evolver_nsga3 = NSGAIII(problem, interact=False, population_size=pop_size)
     evolvers.append(evolver_nsga3)
 
@@ -22,12 +23,6 @@ def compute_pareto_front(
         problem, interact=False, population_params={"pop_size": pop_size}
     )
     evolvers.append(evolver_moead)
-    """
-    evolver_ppga = PPGA(
-        problem, initial_population=Population(problem, pop_size=pop_size)
-    )
-    evolvers.append(evolver_ppga)
-    """
 
     evolver_rvea = RVEA(problem, interact=False, population_size=pop_size)
     evolvers.append(evolver_rvea)
@@ -50,32 +45,35 @@ def compute_pareto_front(
     population.objectives = fss_stack
 
     non_dom = population.non_dominated_objectives()
-    print(non_dom)
-    print(non_dom.shape)
 
-    exit()
-    numpy_data = np.hstack((fs, xs))
+    xs_non_dom = population.individuals[non_dom]
+    fs_non_dom = population.objectives[non_dom]
+
+    numpy_data = np.hstack((fs_non_dom, xs_non_dom))
     df = pd.DataFrame(
         data=numpy_data,
         columns=list(np.squeeze(problem.get_objective_names()))
         + problem.get_variable_names(),
     )
 
-    df.to_csv(file_path + "/" + file_name, index=False)
+    fhandle = file_path + "/" + file_name + f"{fs_non_dom.shape[0]}" + ".csv"
+    df.to_csv(fhandle, index=False)
 
     print(f"Computed a total of {fs.shape[0]} solutions.")
 
-    return
+    return 0
 
 
 def main():
     # problem_x = test_problem_builder("DTLZ2", 8, 5)
-    problem = river_pollution_problem()
+    problem = car_crash_problem()
 
     file_path = str(pathlib.Path(__file__).parent.resolve())
-    file_name = "../data/river_pollution_20000.csv"
+    file_name = "../data/car_crash_"
 
-    compute_pareto_front(problem, file_path=file_path, file_name=file_name, pop_size=10)
+    compute_pareto_front(
+        problem, file_path=file_path, file_name=file_name, pop_size=10000
+    )
     return 0
 
 

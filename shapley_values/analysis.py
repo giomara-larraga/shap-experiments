@@ -1,7 +1,9 @@
+from numpy.lib.function_base import diff
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import List
+from typing import List, SupportsComplex
+from shapley_values.utilities import Normalizer
 
 DATA_DIR = "/home/kilo/workspace/shap-experiments/_results"
 N = 1000
@@ -9,7 +11,9 @@ DELTAS = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
 MISSINGS = [32, 243, 1024, 3125, 7776, 16807]
 
 
-def get_original_rps(dframe: pd.DataFrame, objective_prefix: str, n_objectives: int) -> np.ndarray:
+def get_original_rps(
+    dframe: pd.DataFrame, objective_prefix: str, n_objectives: int
+) -> np.ndarray:
     """Fetch the original reference points from a data frame.
 
     Args:
@@ -19,13 +23,18 @@ def get_original_rps(dframe: pd.DataFrame, objective_prefix: str, n_objectives: 
 
     Returns:
         np.ndarray: A numpy array containing the reference points on each row.
-    """    
+    """
     table_prefix = "Original ref point "
-    stack_me = list(dframe.loc[:, f"{table_prefix}{objective_prefix}{i}"].to_numpy() for i in range(1, n_objectives+1))
+    stack_me = list(
+        dframe.loc[:, f"{table_prefix}{objective_prefix}{i}"].to_numpy()
+        for i in range(1, n_objectives + 1)
+    )
     return np.vstack(stack_me).T
 
 
-def get_original_solutions(dframe: pd.DataFrame, objective_prefix: str, n_objectives: int) -> np.ndarray:
+def get_original_solutions(
+    dframe: pd.DataFrame, objective_prefix: str, n_objectives: int
+) -> np.ndarray:
     """Fetch the original solutions from a data frame.
 
     Args:
@@ -35,13 +44,18 @@ def get_original_solutions(dframe: pd.DataFrame, objective_prefix: str, n_object
 
     Returns:
         np.ndarray: A numpy array containing the solutions on each row.
-    """    
+    """
     table_prefix = "Original solution "
-    stack_me = list(dframe.loc[:, f"{table_prefix}{objective_prefix}{i}"].to_numpy() for i in range(1, n_objectives+1))
+    stack_me = list(
+        dframe.loc[:, f"{table_prefix}{objective_prefix}{i}"].to_numpy()
+        for i in range(1, n_objectives + 1)
+    )
     return np.vstack(stack_me).T
 
 
-def get_new_solutions(dframe: pd.DataFrame, objective_prefix: str, n_objectives: int) -> np.ndarray:
+def get_new_solutions(
+    dframe: pd.DataFrame, objective_prefix: str, n_objectives: int
+) -> np.ndarray:
     """Feth the new solutions from a data frame.
 
     Args:
@@ -51,13 +65,18 @@ def get_new_solutions(dframe: pd.DataFrame, objective_prefix: str, n_objectives:
 
     Returns:
         np.ndarray: A numpy array containing the new solutions on each row.
-    """    
+    """
     table_prefix = "New solution based on new ref point "
-    stack_me = list(dframe.loc[:, f"{table_prefix}{objective_prefix}{i}"].to_numpy() for i in range(1, n_objectives+1))
+    stack_me = list(
+        dframe.loc[:, f"{table_prefix}{objective_prefix}{i}"].to_numpy()
+        for i in range(1, n_objectives + 1)
+    )
     return np.vstack(stack_me).T
 
 
-def get_new_rps(dframe: pd.DataFrame, objective_prefix: str, n_objectives: int) -> np.ndarray:
+def get_new_rps(
+    dframe: pd.DataFrame, objective_prefix: str, n_objectives: int
+) -> np.ndarray:
     """Fetch the new solutions from a data frame.
 
     Args:
@@ -67,10 +86,14 @@ def get_new_rps(dframe: pd.DataFrame, objective_prefix: str, n_objectives: int) 
 
     Returns:
         np.ndarray: A numpy array containing the new solutions on each row.
-    """    
+    """
     table_prefix = "New ref point based on suggestion "
-    stack_me = list(dframe.loc[:, f"{table_prefix}{objective_prefix}{i}"].to_numpy() for i in range(1, n_objectives+1))
+    stack_me = list(
+        dframe.loc[:, f"{table_prefix}{objective_prefix}{i}"].to_numpy()
+        for i in range(1, n_objectives + 1)
+    )
     return np.vstack(stack_me).T
+
 
 def get_effect_result(dframe: pd.DataFrame) -> np.ndarray:
     """Return the effect result for each run (1: success, 0: no change, -1: failure) from a data frame.
@@ -80,59 +103,136 @@ def get_effect_result(dframe: pd.DataFrame) -> np.ndarray:
 
     Returns:
         np.ndarray: A numpy array with the effect results.
-    """    
+    """
     return dframe["Was the desired effect achieved?"].to_numpy()
 
-"""
-successess = []
-no_changes = []
-fails = []
 
-# for d in DELTAS:
-d = 2
-f_name = f"run_river_5000_n_1000_missing_1024_even_delta_{d}_original.xlsx"
-df = pd.read_excel(f"{DATA_DIR}/{f_name}", engine="openpyxl")
+def get_target_indices(dframe: pd.DataFrame) -> np.ndarray:
+    target_key = "Index of solution DM wishes to improve"
+    # start from 1
+    target_indices = dframe.loc[:, target_key].to_numpy() - 1
 
-slice = df.loc[:, "Was the desired effect achieved?"]
-
-success = sum([1 if t == 1 else 0 for t in slice])
-no_change = sum([1 if t == 0 else 0 for t in slice])
-fail = sum([1 if t == -1 else 0 for t in slice])
-
-successess.append(success)
-no_changes.append(no_change)
-fails.append(fail)
-
-print(f"Out of 1000 run (delta={d}): {success} were successful, {no_change} had no change, {fail} were a failure.")
+    return target_indices
 
 
-plt.plot(DELTAS, successess, label="OK")
-plt.plot(DELTAS, no_changes, label="Neutral")
-plt.plot(DELTAS, fails, label="Fail")
-plt.legend()
+def get_changes_in_solutions(
+    dframe: pd.DataFrame, objective_prefix: str, n_objectives: int
+):
 
-plt.show()
-"""
+    originals = get_original_solutions(dframe, objective_prefix, n_objectives)
+    news = get_new_solutions(dframe, objective_prefix, n_objectives)
 
-if __name__ == "__main__":
-    n_objectives = 5
-    d = 8
-    f_name = f"run_river_5000_n_100_missing_3125_even_delta_{d}_original.xlsx"
-    df = pd.read_excel(f"{DATA_DIR}/{f_name}", engine="openpyxl")
+    # target_originals = originals[np.arange(target_indices.shape[0]), target_indices]
+    # target_news = news[np.arange(target_indices.shape[0]), target_indices]
 
-    original_rps = get_original_rps(df, "f_", 5)
-    original_solutions = get_original_solutions(df, "f_", 5)
-    new_ref_points = get_new_rps(df, "f_", 5)
-    new_solutions = get_new_solutions(df, "f_", 5)
-    effects = get_effect_result(df)
+    abs_diffs = np.abs(news - originals)
+    diffs = np.where(news < originals, -abs_diffs, abs_diffs)
+
+    return diffs
+
+
+def print_effects(dframe: pd.DataFrame) -> None:
+    effects = get_effect_result(dframe)
 
     success = sum([1 if t == 1 else 0 for t in effects])
     no_change = sum([1 if t == 0 else 0 for t in effects])
     fail = sum([1 if t == -1 else 0 for t in effects])
 
-    print(f"Out of 1000 run (delta={d}): {success} were successful, {no_change} had no change, {fail} were a failure.")
-    exit()
+    s = (
+        f"Out of {df.shape[0]}: {success} were successful, {no_change} had no change, {fail} were a failure.\n"
+        f"Success rate: {100*(success/df.shape[0]):.{1}f}%; No change rate: {100*(no_change/df.shape[0]):.{1}f}%; Failure rate: {100*(fail/df.shape[0]):.{1}f}%"
+    )
 
+    print(s)
+
+    return s
+
+
+def gaussian(x, mu, sig):
+    return np.exp(-np.power(x - mu, 2.0) / (2 * np.power(sig, 2.0)))
+
+
+def plot_basic_target_stats(df: pd.DataFrame, title: str, n_objectives: int):
+    float_precision = 4
+    float_width = 5
+    effects = get_effect_result(df)
+
+    # effects_per_target = {"0": [], "1": [], "2": [], "3": [], "4": []}
+    effects_per_target = {str(i): [] for i in range(n_objectives)}
+    t_indices = get_target_indices(df)
+
+    for (i, t) in enumerate(t_indices):
+        effects_per_target[str(t)].append(effects[i])
+
+    stats_strs = []
+
+    for key in effects_per_target:
+        suc = sum([1 if t == 1 else 0 for t in np.array(effects_per_target[key])])
+        neu = sum([1 if t == 0 else 0 for t in np.array(effects_per_target[key])])
+        fai = sum([1 if t == -1 else 0 for t in np.array(effects_per_target[key])])
+        n = len(effects_per_target[key])
+
+        s = f"For objective {int(key)+1}: Success: {suc}/{n}; Neutral: {neu}/{n}; Fail: {fai}/{n}"
+
+        stats_strs.append(s)
+        print(s)
+
+    stats_strs.append(print_effects(df))
+
+    diffs_per_target = {str(i): [] for i in range(n_objectives)}
+    # diffs_per_target = {"0": [], "1": [], "2": [], "3": [], "4": []}
+
+    diffs = get_changes_in_solutions(df, "f_", n_objectives)
+    t_indices = get_target_indices(df)
+
+    for (i, t) in enumerate(t_indices):
+        diffs_per_target[str(t)].append(diffs[i])
+
+    for key in diffs_per_target:
+        mu = np.mean(np.array(diffs_per_target[key])[:, int(key)])
+        sig = np.std(np.array(diffs_per_target[key])[:, int(key)])
+        print(f"Objective {key}: Mean diff: {mu}; Std diff: {sig}")
+        x = np.arange(-5, 2.5, 0.01)
+
+        plt.plot(
+            x,
+            gaussian(x, mu, sig),
+            label=f"Objective {int(key)+1}: mean={mu:{float_width}.{float_precision}}, std={sig:{float_width}.{float_precision}}",
+        )
+
+    """
+    y_pos = 1.175
+    for s in stats_strs:
+        plt.text(-2.6, y_pos, s)
+        y_pos -= 0.0225
+    """
+    plt.text(
+        x[0],
+        1.075,
+        "\n".join(stats_strs),
+        bbox={"facecolor": "grey", "alpha": 0.3, "pad": 10},
+    )
+
+    plt.title(title, y=1.0, pad=-14, fontweight="bold")
+    plt.legend(loc="upper right", bbox_to_anchor=(1, 1.125))
+    plt.show()
+
+
+if __name__ == "__main__":
+    n_objectives = 3
+    problem_name = "Car crash problem"
+    d = 15
+    n_missing = 200
+    n_runs = 1000
+    # f_name = f"run_river_10171_1000_missing_{n_missing}_even_delta_{d}_original_pfmissing.xlsx"
+    f_name = f"run_car_crash_10112_{n_runs}_missing_{n_missing}_delta_{d}_original_pfmissing_nochange_.xlsx"
+    df = pd.read_excel(f"{DATA_DIR}/{f_name}", engine="openpyxl")
+
+    title = f"{problem_name} - N=1000 - delta=0.{d:1d} - PF as missing - no change in target"
+    plot_basic_target_stats(df, title, n_objectives)
+
+
+"""
     # missing vs delta
     d = 10
     fig, axs = plt.subplots(2, 5)
@@ -153,20 +253,14 @@ if __name__ == "__main__":
             neutrals.append(no_change)
             fails.append(fail)
 
-        axs[int(i/5), i%5].plot(MISSINGS, successes, c="green", label="Ok")
-        axs[int(i/5), i%5].plot(MISSINGS, neutrals, c="orange", label="No change")
-        axs[int(i/5), i%5].plot(MISSINGS, fails, c="red", label="Fail")
-        axs[int(i/5), i%5].set_title(f"delta={d}")
+        axs[int(i / 5), i % 5].plot(MISSINGS, successes, c="green", label="Ok")
+        axs[int(i / 5), i % 5].plot(MISSINGS, neutrals, c="orange", label="No change")
+        axs[int(i / 5), i % 5].plot(MISSINGS, fails, c="red", label="Fail")
+        axs[int(i / 5), i % 5].set_title(f"delta={d}")
 
     plt.show()
-        
 
 
-
-
-
-
-"""
     pf = pd.read_csv("./data/river_pollution_5000.csv").to_numpy()[:, 0:n_objectives]
     fig, axs = plt.subplots(2, 2)
 

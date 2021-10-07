@@ -4,6 +4,7 @@ from numpy.core.fromnumeric import squeeze
 import pandas as pd
 import shap
 from typing import List, Optional
+import matplotlib.pyplot as plt
 
 from shapley_values.explanations import (
     why_best,
@@ -18,7 +19,7 @@ from shapley_values.utilities import (
     generate_black_box,
     Normalizer,
 )
-from shapley_values.problems import river_pollution_problem
+from shapley_values.problems import car_crash_problem, river_pollution_problem
 from desdeo_problem.problem import DiscreteDataProblem
 from desdeo_tools.scalarization import Scalarizer
 from desdeo_tools.solver import ScalarMinimizer
@@ -56,6 +57,7 @@ def generate_validation_data_global(
     original_problem: Optional[MOProblem] = None,
     improve_target: bool = True,
     pareto_as_missing: bool = False,
+    worsen_random: bool = False,
 ):
     pareto_f = df.to_numpy()
 
@@ -110,8 +112,6 @@ def generate_validation_data_global(
     # nadir always > ideal
     delta = ref_delta * (nadir - ideal)
 
-    # normalizer = Normalizer(ideal, nadir)
-
     while run_i < n_runs:
         print(f"Run {run_i+1} out of {n_runs}...")
 
@@ -132,7 +132,7 @@ def generate_validation_data_global(
             )
         else:
             # sample the PO for missing data
-            missing_data = shap.sample(pareto_f[:, 0:n_objectives])
+            missing_data = shap.sample(pareto_f[:, 0:n_objectives], nsamples=200)
 
         explainer = shap.KernelExplainer(bb, missing_data)
 
@@ -151,6 +151,17 @@ def generate_validation_data_global(
         explanation, improve_i, worsen_i, case_i = how_to_improve_objective_i(
             shap_values, to_be_improved, ref_point, solution
         )
+
+        if worsen_random and worsen_i > -1:
+            # choose something else to worsen at random, except the original worsen_i
+            worsen_candidates = list(range(0, worsen_i)) + list(
+                range(worsen_i + 1, n_objectives)
+            )
+            print(
+                f"Worsening originally {worsen_i}; picking from {list(worsen_candidates)}"
+            )
+            worsen_i = np.random.choice(worsen_candidates)
+            print(f"New candidate is {worsen_i}")
 
         # save the original ref_point before modifying it
         original_ref_point = np.copy(ref_point)
@@ -210,33 +221,64 @@ def generate_validation_data_global(
     data.to_excel(file_name)
 
 
+def plot_3d(
+    df: pd.DataFrame, n_objectives: int, dims: Optional[List[int]] = None
+) -> None:
+    pareto_f = df.to_numpy()[:, 0:n_objectives]
+
+    if dims is None:
+        dims = list(range(n_objectives))
+
+    print(dims)
+    print(pareto_f.shape)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(projection="3d")
+
+    ax.scatter(pareto_f[:, dims[0]], pareto_f[:, dims[1]], pareto_f[:, dims[2]])
+    plt.show()
+
+
 if __name__ == "__main__":
-    # df = pd.read_csv("./data/DTLZ2_8x_5f.csv")
-    # generate_validation_data_global(df, ["x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8"], ["f1", "f2", "f3", "f4", "f5"], n_runs=500, n_missing_data=200, ref_delta=0.2)
+    problem_name = "car_crash"
+    var_names = ["x_1", "x_2"]
+    obj_names = ["f_1", "f_2", "f_3"]
+    n_solutions = 10112
+    n_runs = 1000
 
-    mop = river_pollution_problem()
+    use_original_problem = True
+    # OBS! Check me!
+    mop = car_crash_problem()
 
-    df = pd.read_csv("./data/river_pollution_5000.csv")
-    # OBS! this is with _global_ missing data!!!
-    # fname ="/home/kilo/workspace/shap-experiments/_results/run_river_n_1000_missing_16807_even_delta_10.xlsx"
-    # generate_validation_data_global(df, ["x_1", "x_2"], ["f_1", "f_2", "f_3", "f_4", "f_5"], n_runs=1000, n_missing_data=7, ref_delta=0.10, file_name=fname)
+    pareto_as_missing = True
+    improve_target = False
+    worsen_random = True
 
-    deltas = [0.02, 0.04, 0.06, 0.08, 0.10, 0.12, 0.14, 0.16, 0.18, 0.20]
-    deltas = [0.08, 0.10, 0.12]
+    df = pd.read_csv(f"./data/{problem_name}_{n_solutions}.csv")
+
+    plot_3d(df, 3)
+
+    # deltas = [0.02, 0.04, 0.06, 0.08, 0.10, 0.12, 0.14, 0.16, 0.18, 0.20]
+    deltas = [0.05, 0.10, 0.15]
     # missings = [2, 3, 4, 5, 6, 7]
     missings = [3]
-    n = 100
     for m in missings:
         for d in deltas:
-            fname = f"/home/kilo/workspace/shap-experiments/_results/run_river_5000_n_{n}_missing_{m**5}_even_delta_{int(d*100)}_pfmissing.xlsx"
+            fname = (
+                f"/home/kilo/workspace/shap-experiments/_results/run_{problem_name}_{n_solutions}_{n_runs}_missing_200_delta_"
+                f"{int(d*100)}{'_original_' if use_original_problem else '_'}{'pfmissing_' if pareto_as_missing else ''}"
+                f"{'nochange_' if not improve_target else ''}{'random' if worsen_random else ''}.xlsx"
+            )
             generate_validation_data_global(
                 df,
-                ["x_1", "x_2"],
-                ["f_1", "f_2", "f_3", "f_4", "f_5"],
-                n_runs=n,
+                var_names,
+                obj_names,
+                n_runs=n_runs,
                 n_missing_data=m,
                 ref_delta=d,
                 file_name=fname,
-                # original_problem=mop,
-                pareto_as_missing=True,
+                original_problem=mop,
+                pareto_as_missing=pareto_as_missing,
+                improve_target=improve_target,
+                worsen_random=worsen_random,
             )

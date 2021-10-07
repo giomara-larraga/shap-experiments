@@ -51,7 +51,7 @@ def river_pollution_problem():
     return mo_problem
 
 
-def car_crash():
+def car_crash_problem():
     def f_1(x: np.ndarray) -> np.ndarray:
         x = np.atleast_2d(x)
         return (
