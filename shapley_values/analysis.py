@@ -225,10 +225,11 @@ if __name__ == "__main__":
     n_missing = 200
     n_runs = 1000
     # f_name = f"run_river_10171_1000_missing_{n_missing}_even_delta_{d}_original_pfmissing.xlsx"
-    f_name = f"run_car_crash_10112_{n_runs}_missing_{n_missing}_delta_{d}_original_pfmissing_nochange_.xlsx"
+    f_name = f"run_car_crash_10112_{n_runs}_missing_{n_missing}_delta_{d}_original_pfmissing_random.xlsx"
     df = pd.read_excel(f"{DATA_DIR}/{f_name}", engine="openpyxl")
 
-    title = f"{problem_name} - N=1000 - delta=0.{d:1d} - PF as missing - no change in target"
+    # title = f"{problem_name} - N=1000 - delta=0.{d:1d} - PF as missing - impair random (but not suggested)"
+    title = f"{problem_name} - N=1000 - delta=0.{d:1d} - PF as missing - impair random (but no suggested or target)"
     plot_basic_target_stats(df, title, n_objectives)
 
 

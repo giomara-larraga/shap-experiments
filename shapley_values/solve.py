@@ -66,10 +66,10 @@ def compute_pareto_front(
 
 def main():
     # problem_x = test_problem_builder("DTLZ2", 8, 5)
-    problem = car_crash_problem()
+    problem = test_problem_builder("DTLZ2", 5, 3)
 
     file_path = str(pathlib.Path(__file__).parent.resolve())
-    file_name = "../data/car_crash_"
+    file_name = "../data/DTLZ2_5x_3f_"
 
     compute_pareto_front(
         problem, file_path=file_path, file_name=file_name, pop_size=10000
