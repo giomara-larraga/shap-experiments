@@ -24,7 +24,7 @@ from desdeo_problem.testproblems import test_problem_builder
 from desdeo_problem.problem import DiscreteDataProblem
 from desdeo_tools.scalarization import Scalarizer
 from desdeo_tools.solver import ScalarMinimizer
-from desdeo_tools.scalarization import SimpleASF, PointMethodASF, StomASF
+from desdeo_tools.scalarization import SimpleASF, PointMethodASF, StomASF, GuessASF
 
 
 def solve_with_ref_point(problem: MOProblem, ref_point: np.ndarray, asf=PointMethodASF):
@@ -70,7 +70,12 @@ def generate_validation_data_global(
     problem = DiscreteDataProblem(df, variable_names, objective_names, nadir, ideal)
 
     # asf = SimpleASF(np.array([1 for _ in range(n_objectives)]))
-    asf = asf_(nadir, ideal)
+    if asf_ is GuessASF:
+        asf = asf_(nadir)
+    elif asf_ is StomASF:
+        asf = asf_(ideal)
+    else:
+        asf = asf_(nadir, ideal)
 
     bb = generate_black_box(problem, asf)
 
@@ -248,20 +253,21 @@ def plot_3d(
 
 
 if __name__ == "__main__":
-    problem_name = "car_crash"
-    var_names = ["x_1", "x_2", "x_3", "x_4", "x_5"]
-    obj_names = ["f_1", "f_2", "f_3"]
-    n_solutions = 10112
+    problem_name = "river_pollution"
+    # var_names = ["x_1", "x_2", "x_3", "x_4", "x_5"]
+    var_names = ["x_1", "x_2"]
+    obj_names = ["f_1", "f_2", "f_3", "f_4", "f_5"]
+    n_solutions = 10171
     n_runs = 200
 
     use_original_problem = True
     # OBS! Check me!
-    mop = car_crash_problem()
+    mop = river_pollution_problem()
 
     pareto_as_missing = True
 
-    asf = StomASF
-    asf_name = "stomasf"
+    asf = GuessASF
+    asf_name = "guessasf"
 
     # improve_target = True
     # worsen_random = True

@@ -148,11 +148,76 @@ def print_effects(dframe: pd.DataFrame) -> None:
     return s
 
 
+def compute_relative_improvements_of_targets(
+    dframe: pd.DataFrame, objective_prefix: str, n_objectives: int
+):
+    target_i = get_target_indices(dframe)
+    originals = get_original_solutions(dframe, objective_prefix, n_objectives)
+    news = get_new_solutions(dframe, objective_prefix, n_objectives)
+
+    relative_changes_per_target = {str(i): [] for i in range(n_objectives)}
+    for (i, t) in enumerate(target_i):
+        # iterate the targets
+        relative_change = (news[i, t] - originals[i, t]) / np.abs(originals[i, t]) * 100
+        relative_changes_per_target[str(t)].append(relative_change)
+
+    relative_means = np.array(
+        [
+            np.mean(relative_changes_per_target[key])
+            for key in relative_changes_per_target
+        ]
+    )
+
+    relative_stds = np.array(
+        [
+            np.std(relative_changes_per_target[key])
+            for key in relative_changes_per_target
+        ]
+    )
+
+    relative_maxes = np.array(
+        [
+            np.max(relative_changes_per_target[key])
+            for key in relative_changes_per_target
+        ]
+    )
+
+    relative_mins = np.array(
+        [
+            np.min(relative_changes_per_target[key])
+            for key in relative_changes_per_target
+        ]
+    )
+
+    print(f"Relative means: {relative_means}")
+    print(f"Relative stds: {relative_stds}")
+    print(f"Relative maxes: {relative_maxes}")
+    print(f"Relative mins: {relative_mins}")
+
+    return
+
+    relative_change = (news - originals) / originals * 100
+
+    print(relative_change)
+
+    return
+    relative_mean = np.mean((originals - news) / originals * 100, axis=0)
+    relative_std = np.std((originals - news) / originals * 100, axis=0)
+
+    print(f"Relative means: {relative_mean}%")
+    print(f"Relative std: {relative_std}%")
+
+
 def gaussian(x, mu, sig):
     return np.exp(-np.power(x - mu, 2.0) / (2 * np.power(sig, 2.0)))
 
 
-def plot_basic_target_stats(df: pd.DataFrame, title: str, n_objectives: int):
+def plot_and_save_basic_target_stats(
+    df: pd.DataFrame,
+    title: str,
+    n_objectives: int,
+    save_dir: str = "/home/kilo/workspace/shap-experiments/_numerical_results/",
+):
     float_precision = 4
     float_width = 5
     effects = get_effect_result(df)
@@ -188,9 +253,12 @@ def plot_basic_target_stats(df: pd.DataFrame, title: str, n_objectives: int):
     for (i, t) in enumerate(t_indices):
         diffs_per_target[str(t)].append(diffs[i])
 
+    mus_and_sigmas = {}
+
     for key in diffs_per_target:
         mu = np.mean(np.array(diffs_per_target[key])[:, int(key)])
         sig = np.std(np.array(diffs_per_target[key])[:, int(key)])
+        mus_and_sigmas[f"{key}"] = (mu, sig)
         print(f"Objective {key}: Mean diff: {mu}; Std diff: {sig}")
         x = np.arange(-5, 2.5, 0.01)
 
@@ -200,12 +268,6 @@ def plot_basic_target_stats(df: pd.DataFrame, title: str, n_objectives: int):
             label=f"Objective {int(key)+1}: mean={mu:{float_width}.{float_precision}}, std={sig:{float_width}.{float_precision}}",
         )
 
-    """
-    y_pos = 1.175
-    for s in stats_strs:
-        plt.text(-2.6, y_pos, s)
-        y_pos -= 0.0225
-    """
     plt.text(
         x[0],
         1.075,
@@ -219,18 +281,34 @@ def plot_basic_target_stats(df: pd.DataFrame, title: str, n_objectives: int):
 
 
 if __name__ == "__main__":
-    n_objectives = 3
-    problem_name = "Car crash problem"
-    d = 15
+    n_objectives = 5
+    problem_name = "river_pollution"
+    d = [0.05, 0.10, 0.15, 0.20]
     n_missing = 200
-    n_runs = 1000
-    # f_name = f"run_river_10171_1000_missing_{n_missing}_even_delta_{d}_original_pfmissing.xlsx"
-    f_name = f"run_car_crash_10112_{n_runs}_missing_{n_missing}_delta_{d}_original_pfmissing_random.xlsx"
-    df = pd.read_excel(f"{DATA_DIR}/{f_name}", engine="openpyxl")
+    n_runs = 200
+    n_solutions = 10171
+    asf_name = "guessasf"
+    use_original_problem = True
+    pareto_as_missing = True
 
+    improve_target = False
+    worsen_random = True
+
+    d = 0.05
+    f_name = (
+        f"run_{problem_name}_{n_solutions}_per_objective_{n_runs}_{asf_name}_delta_"
+        f"{int(d*100)}{'_original_' if use_original_problem else '_'}{'pfmissing_' if pareto_as_missing else ''}"
+        f"{'nochange_' if not improve_target else ''}{'random' if worsen_random else ''}.xlsx"
+    )
+
+    df = pd.read_excel(f"{DATA_DIR}/{f_name}", engine="openpyxl")
     # title = f"{problem_name} - N=1000 - delta=0.{d:1d} - PF as missing - impair random (but not suggested)"
-    title = f"{problem_name} - N=1000 - delta=0.{d:1d} - PF as missing - impair random (but no suggested or target)"
-    plot_basic_target_stats(df, title, n_objectives)
+    title = f"{problem_name} - N=1000 - delta={int(d*100)} - PF as missing - {f'{n_runs} per objective - '}{'improve target - ' if improve_target else 'do not improve target - '}{'worsen random' if worsen_random else 'do not worsen random'}"
+
+    print(df)
+    print(title)
+    compute_relative_improvements_of_targets(df, "f_", 5)
+    plot_and_save_basic_target_stats(df, title, n_objectives)
 
 
 """
