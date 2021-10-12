@@ -24,7 +24,7 @@ from desdeo_problem.testproblems import test_problem_builder
 from desdeo_problem.problem import DiscreteDataProblem
 from desdeo_tools.scalarization import Scalarizer
 from desdeo_tools.solver import ScalarMinimizer
-from desdeo_tools.scalarization import SimpleASF, PointMethodASF
+from desdeo_tools.scalarization import SimpleASF, PointMethodASF, StomASF
 
 
 def solve_with_ref_point(problem: MOProblem, ref_point: np.ndarray, asf=PointMethodASF):
@@ -248,20 +248,20 @@ def plot_3d(
 
 
 if __name__ == "__main__":
-    problem_name = "river_pollution"
-    var_names = ["x_1", "x_2"]
-    obj_names = ["f_1", "f_2", "f_3", "f_4", "f_5"]
-    n_solutions = 10171
+    problem_name = "car_crash"
+    var_names = ["x_1", "x_2", "x_3", "x_4", "x_5"]
+    obj_names = ["f_1", "f_2", "f_3"]
+    n_solutions = 10112
     n_runs = 200
 
     use_original_problem = True
     # OBS! Check me!
-    mop = river_pollution_problem()
+    mop = car_crash_problem()
 
     pareto_as_missing = True
 
-    asf = PointMethodASF
-    asf_name = "pointmethodasf"
+    asf = StomASF
+    asf_name = "stomasf"
 
     # improve_target = True
     # worsen_random = True
@@ -277,28 +277,26 @@ if __name__ == "__main__":
 
     df = pd.read_csv(f"./data/{problem_name}_{n_solutions}.csv")
 
-    # deltas = [0.02, 0.04, 0.06, 0.08, 0.10, 0.12, 0.14, 0.16, 0.18, 0.20]
+    m = 200
     deltas = [0.05, 0.10, 0.15, 0.20]
-    # missings = [2, 3, 4, 5, 6, 7]
-    missings = [3]
-    for m in missings:
-        for d in deltas:
-            fname = (
-                f"/home/kilo/workspace/shap-experiments/_results/run_{problem_name}_{n_solutions}_per_objective_{n_runs}_{asf_name}_delta_"
-                f"{int(d*100)}{'_original_' if use_original_problem else '_'}{'pfmissing_' if pareto_as_missing else ''}"
-                f"{'nochange_' if not improve_target else ''}{'random' if worsen_random else ''}.xlsx"
-            )
-            generate_validation_data_global(
-                df,
-                var_names,
-                obj_names,
-                n_runs=n_runs,
-                n_missing_data=m,
-                ref_delta=d,
-                file_name=fname,
-                original_problem=mop,
-                asf_=asf,
-                pareto_as_missing=pareto_as_missing,
-                improve_target=improve_target,
-                worsen_random=worsen_random,
-            )
+
+    for d in deltas:
+        fname = (
+            f"/home/kilo/workspace/shap-experiments/_results/run_{problem_name}_{n_solutions}_per_objective_{n_runs}_{asf_name}_delta_"
+            f"{int(d*100)}{'_original_' if use_original_problem else '_'}{'pfmissing_' if pareto_as_missing else ''}"
+            f"{'nochange_' if not improve_target else ''}{'random' if worsen_random else ''}.xlsx"
+        )
+        generate_validation_data_global(
+            df,
+            var_names,
+            obj_names,
+            n_runs=n_runs,
+            n_missing_data=m,
+            ref_delta=d,
+            file_name=fname,
+            original_problem=mop,
+            asf_=asf,
+            pareto_as_missing=pareto_as_missing,
+            improve_target=improve_target,
+            worsen_random=worsen_random,
+        )
