@@ -189,27 +189,52 @@ def compute_relative_improvements_of_targets(
         ]
     )
 
-    print(f"Relative means: {relative_means}")
-    print(f"Relative stds: {relative_stds}")
-    print(f"Relative maxes: {relative_maxes}")
-    print(f"Relative mins: {relative_mins}")
-
-    return
-
-    relative_change = (news - originals) / originals * 100
-
-    print(relative_change)
-
-    return
-    relative_mean = np.mean((originals - news) / originals * 100, axis=0)
-    relative_std = np.std((originals - news) / originals * 100, axis=0)
-
-    print(f"Relative means: {relative_mean}%")
-    print(f"Relative std: {relative_std}%")
+    return {
+        "mean": relative_means,
+        "std": relative_stds,
+        "max": relative_maxes,
+        "min": relative_mins,
+    }
 
 
 def gaussian(x, mu, sig):
     return np.exp(-np.power(x - mu, 2.0) / (2 * np.power(sig, 2.0)))
+
+
+def compute_target_success_rates(
+    df: pd.DataFrame,
+    n_objectives: int,
+):
+    effects = get_effect_result(df)
+
+    # effects_per_target = {"0": [], "1": [], "2": [], "3": [], "4": []}
+    effects_per_target = {str(i): [] for i in range(n_objectives)}
+    t_indices = get_target_indices(df)
+
+    for (i, t) in enumerate(t_indices):
+        effects_per_target[str(t)].append(effects[i])
+
+    stats_strs = []
+    success_rates = {str(i): [] for i in range(n_objectives)}
+
+    for key in effects_per_target:
+        suc = sum([1 if t == 1 else 0 for t in np.array(effects_per_target[key])])
+        neu = sum([1 if t == 0 else 0 for t in np.array(effects_per_target[key])])
+        fai = sum([1 if t == -1 else 0 for t in np.array(effects_per_target[key])])
+        n = len(effects_per_target[key])
+
+        s = f"For objective {int(key)+1}: Success: {suc}/{n}; Neutral: {neu}/{n}; Fail: {fai}/{n}"
+
+        stats_strs.append(s)
+        print(s)
+
+        success_rates[key] = [
+            suc / n * 100,
+            neu / n * 100,
+            fai / n * 100,
+        ]
+
+    return np.array([success_rates[key] for key in success_rates])
 
 
 def plot_and_save_basic_target_stats(
@@ -283,33 +308,89 @@ def plot_and_save_basic_target_stats(
 if __name__ == "__main__":
     n_objectives = 5
     problem_name = "river_pollution"
-    d = [0.05, 0.10, 0.15, 0.20]
+    deltas = [0.05, 0.10, 0.15, 0.20]
     n_missing = 200
     n_runs = 200
     n_solutions = 10171
-    asf_name = "guessasf"
+    asf_name = "stomasf"
     use_original_problem = True
     pareto_as_missing = True
 
-    improve_target = False
-    worsen_random = True
+    improve_target = True
+    worsen_random = False
+    naive = False
 
-    d = 0.05
-    f_name = (
-        f"run_{problem_name}_{n_solutions}_per_objective_{n_runs}_{asf_name}_delta_"
-        f"{int(d*100)}{'_original_' if use_original_problem else '_'}{'pfmissing_' if pareto_as_missing else ''}"
-        f"{'nochange_' if not improve_target else ''}{'random' if worsen_random else ''}.xlsx"
-    )
+    for d in deltas:
+        f_name_ = (
+            f"run_{problem_name}_{n_solutions}_per_objective_{n_runs}_{asf_name}_delta_"
+            f"{int(d*100)}{'_original_' if use_original_problem else '_'}{'pfmissing_' if pareto_as_missing else ''}"
+            f"{'nochange_' if not improve_target else ''}{'random' if worsen_random else ''}{'naive' if naive else ''}"
+        )
+        f_name = f_name_ + ".xlsx"
 
-    df = pd.read_excel(f"{DATA_DIR}/{f_name}", engine="openpyxl")
-    # title = f"{problem_name} - N=1000 - delta=0.{d:1d} - PF as missing - impair random (but not suggested)"
-    title = f"{problem_name} - N=1000 - delta={int(d*100)} - PF as missing - {f'{n_runs} per objective - '}{'improve target - ' if improve_target else 'do not improve target - '}{'worsen random' if worsen_random else 'do not worsen random'}"
+        df = pd.read_excel(f"{DATA_DIR}/{f_name}", engine="openpyxl")
+        # title = f"{problem_name} - N=1000 - delta=0.{d:1d} - PF as missing - impair random (but not suggested)"
+        title = f"{problem_name} - N=1000 - delta={int(d*100)} - PF as missing - {f'{n_runs} per objective - '}{'improve target - ' if improve_target else 'do not improve target - '}{'worsen random' if worsen_random else 'do not worsen random'}"
 
-    print(df)
-    print(title)
-    compute_relative_improvements_of_targets(df, "f_", 5)
-    plot_and_save_basic_target_stats(df, title, n_objectives)
+        relative_imprvs = compute_relative_improvements_of_targets(df, "f_", 5)
+        success_rates = compute_target_success_rates(df, n_objectives)
 
+        data = pd.DataFrame(
+            columns=(
+                "Objective",
+                "Success",
+                "Neutral",
+                "Failure",
+                "mean",
+                "std",
+                "min",
+                "max",
+            )
+        )
+
+        formatters = {
+            "Success": lambda x: f"{x:.2f}",
+            "Neutral": lambda x: f"{x:.2f}",
+            "Failure": lambda x: f"{x:.2f}",
+            "mean": lambda x: f"{x:.3f}",
+            "std": lambda x: f"{x:.3f}",
+            "min": lambda x: f"{x:.3f}",
+            "max": lambda x: f"{x:.3f}",
+        }
+
+        for i in range(n_objectives):
+            datum = (
+                f"f_{i+1}",
+                success_rates[i, 0],
+                success_rates[i, 1],
+                success_rates[i, 2],
+                relative_imprvs["mean"][i],
+                relative_imprvs["std"][i],
+                relative_imprvs["min"][i],
+                relative_imprvs["max"][i],
+            )
+            data.loc[i] = datum
+
+        data.loc[n_objectives + 1] = (
+            "mean",
+            np.mean(success_rates[:, 0]),
+            np.mean(success_rates[:, 1]),
+            np.mean(success_rates[:, 2]),
+            np.mean(relative_imprvs["mean"]),
+            np.mean(relative_imprvs["std"]),
+            np.mean(relative_imprvs["min"]),
+            np.mean(relative_imprvs["max"]),
+        )
+
+        latex_fname = DATA_DIR + "/../_tables/" + f_name_ + ".tex"
+        table_tex = data.to_latex(
+            formatters=formatters,
+            index=False,
+        )
+        data_tex = "\n".join(map(lambda x: x.strip(), table_tex.splitlines()[4:-2]))
+
+        with open(latex_fname, "w") as f:
+            f.write(data_tex)
 
 """
     # missing vs delta

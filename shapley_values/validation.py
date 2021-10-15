@@ -60,6 +60,7 @@ def generate_validation_data_global(
     improve_target: bool = True,
     pareto_as_missing: bool = False,
     worsen_random: bool = False,
+    naive: bool = False,
 ):
     pareto_f = df.to_numpy()
 
@@ -73,7 +74,7 @@ def generate_validation_data_global(
     if asf_ is GuessASF:
         asf = asf_(nadir)
     elif asf_ is StomASF:
-        asf = asf_(ideal)
+        asf: StomASF = asf_(ideal)
     else:
         asf = asf_(nadir, ideal)
 
@@ -162,7 +163,7 @@ def generate_validation_data_global(
                 shap_values, to_be_improved, ref_point, solution
             )
 
-            if worsen_random and worsen_i > -1:
+            if worsen_random and not naive and worsen_i > -1:
                 # choose something else to worsen at random, except the original worsen_i
                 worsen_candidates = list(range(0, worsen_i)) + list(
                     range(worsen_i + 1, n_objectives)
@@ -178,12 +179,12 @@ def generate_validation_data_global(
             original_ref_point = np.copy(ref_point)
 
             # check if something is to be improved and improve it (notice that we assume minimization)
-            if improve_target and improve_i > -1:
+            if (improve_target or naive) and improve_i > -1:
                 # change the ref_point accordingly
                 ref_point[improve_i] -= delta[improve_i]
 
             # check if something is to be worsened (notice that we assume minimization)
-            if worsen_i > -1:
+            if not naive and worsen_i > -1:
                 # change the ref_point accordingly
                 # ref_point[worsen_i] += ref_delta * ref_point[worsen_i]
                 ref_point[worsen_i] += delta[worsen_i]
@@ -278,8 +279,12 @@ if __name__ == "__main__":
     # improve_target = True
     # worsen_random = False
 
-    improve_target = False
+    # improve_target = False
+    # worsen_random = False
+
     worsen_random = False
+    improve_target = True
+    naive = True
 
     df = pd.read_csv(f"./data/{problem_name}_{n_solutions}.csv")
 
@@ -290,7 +295,7 @@ if __name__ == "__main__":
         fname = (
             f"/home/kilo/workspace/shap-experiments/_results/run_{problem_name}_{n_solutions}_per_objective_{n_runs}_{asf_name}_delta_"
             f"{int(d*100)}{'_original_' if use_original_problem else '_'}{'pfmissing_' if pareto_as_missing else ''}"
-            f"{'nochange_' if not improve_target else ''}{'random' if worsen_random else ''}.xlsx"
+            f"{'nochange_' if not improve_target else ''}{'random' if worsen_random else ''}{'naive' if naive else ''}.xlsx"
         )
         generate_validation_data_global(
             df,
@@ -305,4 +310,5 @@ if __name__ == "__main__":
             pareto_as_missing=pareto_as_missing,
             improve_target=improve_target,
             worsen_random=worsen_random,
+            naive=naive,
         )
