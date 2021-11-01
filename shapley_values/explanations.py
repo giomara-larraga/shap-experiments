@@ -3,7 +3,9 @@ from typing import Tuple
 import numpy as np
 
 
-def why_worst(svalues: np.ndarray, target: np.ndarray, actual: np.ndarray) -> Tuple[str, int, int]:
+def why_worst(
+    svalues: np.ndarray, target: np.ndarray, actual: np.ndarray
+) -> Tuple[str, int, int]:
     """Compute the difference between target and actual values, and find the largest positive
     discrepancy. Only look at positive values in the difference (i.e., objectives that were worse
     than desired). We care only about resulting objective values worse than the target and wish
@@ -41,7 +43,9 @@ def why_worst(svalues: np.ndarray, target: np.ndarray, actual: np.ndarray) -> Tu
     )
 
 
-def why_best(svalues: np.ndarray, target: np.ndarray, actual: np.ndarray) -> Tuple[str, int, int]:
+def why_best(
+    svalues: np.ndarray, target: np.ndarray, actual: np.ndarray
+) -> Tuple[str, int, int]:
     """Compute the difference between target and actual values, and find the largest negative
     discrepancy. Only look at negative values in the difference (i.e., objectives that were better
     than desired). We care only about resulting objective values better than the target and wish
@@ -91,7 +95,7 @@ def why_objective_i(svalues: np.ndarray, objective_i: int) -> Tuple[str, int, in
         Tuple[str, int, int]: A tuple containing a textual explanations (str), the index (int) of the objective with
         the best effect, and the index (int) of the objective with the worst effect. An idex value of -1 indicates
         that no objective had a good/bad effect.
-    
+
     Note:
         It is assumed that each row has at least one element with a non-zero element.
     """
@@ -119,9 +123,9 @@ def why_objective_i(svalues: np.ndarray, objective_i: int) -> Tuple[str, int, in
         )
     else:
         msg = (
-                f"Objective {objective_i+1} was improved most by the value given for objective {best_effect_i+1} and "
-                f"impaired most by the value given to objective {worst_effect_i+1}."
-            )
+            f"Objective {objective_i+1} was improved most by the value given for objective {best_effect_i+1} and "
+            f"impaired most by the value given to objective {worst_effect_i+1}."
+        )
 
     return (msg, best_effect_i, worst_effect_i)
 
@@ -166,7 +170,9 @@ def largest_conflict(svalues: np.ndarray) -> Tuple[str, int, int]:
     return msg, conflict_pair[0], conflict_pair[1]
 
 
-def how_to_improve_objective_i_old(svalues: np.ndarray, objective_i: int) -> Tuple[str, int, int]:
+def how_to_improve_objective_i_old(
+    svalues: np.ndarray, objective_i: int
+) -> Tuple[str, int, int]:
     """Determines a strategy on how a reference point, for which SHAP values have been computed for some black-box,
     should change so that an improvement in a desired objective may result when the black-box is invoked again with
     the changed reference point.
@@ -217,7 +223,13 @@ def how_to_improve_objective_i_old(svalues: np.ndarray, objective_i: int) -> Tup
             return msg, -1, to_worsen
 
 
-def how_to_improve_objective_i(svalues: np.ndarray, objective_i: int, target: np.ndarray, actual: np.ndarray, objective_names: str = None) -> Tuple[str, int, int]:
+def how_to_improve_objective_i(
+    svalues: np.ndarray,
+    objective_i: int,
+    target: np.ndarray,
+    actual: np.ndarray,
+    objective_names: str = None,
+) -> Tuple[str, int, int]:
     """Determines a strategy on how a reference point, for which SHAP values have been computed for some black-box,
     should change so that an improvement in a desired objective may result when the black-box is invoked again with
     the changed reference point.
@@ -245,7 +257,9 @@ def how_to_improve_objective_i(svalues: np.ndarray, objective_i: int, target: np
     """
     # Set default objective names if not provided.
     if objective_names is None:
-        objective_names = [f"Objective {i}" for i in range (1, np.squeeze(target).shape[0]+1)]
+        objective_names = [
+            f"Objective {i}" for i in range(1, np.squeeze(target).shape[0] + 1)
+        ]
 
     _, best_effect, worst_effect = why_objective_i(svalues, objective_i)
     diff = target - actual
@@ -262,22 +276,22 @@ def how_to_improve_objective_i(svalues: np.ndarray, objective_i: int, target: np
                 f"Try to improve objective {objective_names[objective_i]} to improve its value while impairing the "
                 f"value of objective {objective_names[worst_effect]}, which had the most impairing effect on "
                 f"on objective {objective_names[objective_i]}."
-                )
+            )
             return msg, objective_i, worst_effect, 0
         else:
             # impair second worst effect, improve i
             # find second effect
             row = svalues[objective_i]
             row[objective_i] = -np.inf
+            second_worst = np.argmax(row)
+
             msg = (
                 f"Each objective was impaired. The most impairing effect was due to objective {objective_names[objective_i]}."
                 f"Try to improve objective {objective_names[objective_i]} to improve its value while impairing the "
-                f"value of objective {objective_names[worst_effect]}, which had the second most impairing effect "
+                f"value of objective {objective_names[second_worst]}, which had the second most impairing effect "
                 f"on objective {objective_names[objective_i]}."
             )
-
-            second_cause = np.argmax(row)
-            return msg, objective_i, second_cause, 1
+            return msg, objective_i, second_worst, 1
 
     # Case: everything has improved (everything in actual is less than in target)
     if np.all(diff > 0):
@@ -293,7 +307,7 @@ def how_to_improve_objective_i(svalues: np.ndarray, objective_i: int, target: np
         if first_cause == objective_i:
             # improve i, impair second_cause
             # find the second least desirable effect
-            row[objective_i] = -np.inf 
+            row[objective_i] = -np.inf
             second_cause = np.argmax(row)
             msg = (
                 f"Each objective was improved. Objective {objective_names[objective_i]} had the least improving effect on itself."
@@ -355,7 +369,6 @@ def how_to_improve_objective_i(svalues: np.ndarray, objective_i: int, target: np
             )
 
             return msg, objective_i, worst_effect, 6
-
 
     # Case: objective i is the cause of the worst effect
     if objective_i == worst_effect:

@@ -143,8 +143,6 @@ def print_effects(dframe: pd.DataFrame) -> None:
         f"Success rate: {100*(success/df.shape[0]):.{1}f}%; No change rate: {100*(no_change/df.shape[0]):.{1}f}%; Failure rate: {100*(fail/df.shape[0]):.{1}f}%"
     )
 
-    print(s)
-
     return s
 
 
@@ -197,6 +195,86 @@ def compute_relative_improvements_of_targets(
     }
 
 
+def compute_relative_improvements_of_targets_median_and_mad(
+    dframe: pd.DataFrame, objective_prefix: str, n_objectives: int
+):
+    k = 1.4826
+    target_i = get_target_indices(dframe)
+    originals = get_original_solutions(dframe, objective_prefix, n_objectives)
+    news = get_new_solutions(dframe, objective_prefix, n_objectives)
+
+    relative_changes_per_target = {str(i): [] for i in range(n_objectives)}
+    for (i, t) in enumerate(target_i):
+        # iterate the targets
+        relative_change = (news[i, t] - originals[i, t]) / np.abs(originals[i, t]) * 100
+        relative_changes_per_target[str(t)].append(relative_change)
+
+    relative_medians = np.array(
+        [
+            np.median(relative_changes_per_target[key])
+            for key in relative_changes_per_target
+        ]
+    )
+
+    relative_mads = np.array(
+        [
+            np.median(
+                np.abs(
+                    relative_changes_per_target[key]
+                    - np.median(relative_changes_per_target[key])
+                )
+            )
+            for key in relative_changes_per_target
+        ]
+    )
+
+    relative_maxes = np.array(
+        [
+            np.max(relative_changes_per_target[key])
+            for key in relative_changes_per_target
+        ]
+    )
+
+    relative_mins = np.array(
+        [
+            np.min(relative_changes_per_target[key])
+            for key in relative_changes_per_target
+        ]
+    )
+
+    relative_std_mads = np.array(k * relative_mads)
+
+    relative_changes = np.array(
+        [relative_changes_per_target[key] for key in relative_changes_per_target]
+    )
+    no_outliers = np.where(
+        np.logical_and(
+            np.less_equal(relative_medians - 2 * relative_std_mads, relative_changes.T),
+            np.greater_equal(
+                relative_medians + 2 * relative_std_mads, relative_changes.T
+            ),
+        ),
+        relative_changes.T,
+        np.nan,
+    )
+
+    no_outliers_mask = np.isnan(no_outliers).any(axis=1)
+
+    mean_95s = np.mean(no_outliers[~no_outliers_mask], axis=0)
+
+    n_outliers = np.sum(np.count_nonzero(~no_outliers_mask))
+
+    return {
+        "median": relative_medians,
+        "mad": relative_mads,
+        "max": relative_maxes,
+        "min": relative_mins,
+        "std_mad": relative_std_mads,
+        "mean95": mean_95s,
+        "outliers": n_outliers,
+    }
+
+
 def gaussian(x, mu, sig):
     return np.exp(-np.power(x - mu, 2.0) / (2 * np.power(sig, 2.0)))
 
@@ -226,7 +304,6 @@ def compute_target_success_rates(
         s = f"For objective {int(key)+1}: Success: {suc}/{n}; Neutral: {neu}/{n}; Fail: {fai}/{n}"
 
         stats_strs.append(s)
-        print(s)
 
         success_rates[key] = [
             suc / n * 100,
@@ -265,7 +342,6 @@ def plot_and_save_basic_target_stats(
         s = f"For objective {int(key)+1}: Success: {suc}/{n}; Neutral: {neu}/{n}; Fail: {fai}/{n}"
 
         stats_strs.append(s)
-        print(s)
 
     stats_strs.append(print_effects(df))
 
@@ -284,7 +360,7 @@ def plot_and_save_basic_target_stats(
         mu = np.mean(np.array(diffs_per_target[key])[:, int(key)])
         sig = np.std(np.array(diffs_per_target[key])[:, int(key)])
         mus_and_sigmas[f"{key}"] = (mu, sig)
-        print(f"Objective {key}: Mean diff: {mu}; Std diff: {sig}")
+        # print(f"Objective {key}: Mean diff: {mu}; Std diff: {sig}")
         x = np.arange(-5, 2.5, 0.01)
 
         plt.plot(
@@ -308,11 +384,10 @@ def plot_and_save_basic_target_stats(
 if __name__ == "__main__":
     n_objectives = 5
     problem_name = "river_pollution"
-    deltas = [0.05, 0.10, 0.15, 0.20]
     n_missing = 200
     n_runs = 200
     n_solutions = 10171
-    asf_name = "stomasf"
+    asf_name = "pointmethodasf"
     use_original_problem = True
     pareto_as_missing = True
 
@@ -320,77 +395,197 @@ if __name__ == "__main__":
     worsen_random = False
     naive = False
 
+    data = pd.DataFrame(
+        columns=(
+            "Delta",
+            "ASF",
+            "Strategy",
+            "Success",
+            "Neutral",
+            "Failure",
+            "median",
+            "MAD",
+            "min",
+            "max",
+            "mean_95",
+            "std_mad",
+        )
+    )
+
+    formatters = {
+        "Success": lambda x: f"{x:.2f}",
+        "Neutral": lambda x: f"{x:.2f}",
+        "Failure": lambda x: f"{x:.2f}",
+        "median": lambda x: f"{x:.2f}",
+        "MAD": lambda x: f"{x:.2f}",
+        "min": lambda x: f"{x:.2e}",
+        "max": lambda x: f"{x:.2e}",
+        "std_mad": lambda x: f"{x:.2f}",
+    }
+
+    asf_names = ["pointmethodasf", "guessasf", "stomasf"]
+    deltas = [0.05, 0.10, 0.15, 0.20]
+
+    def strategy_resolver(improve_target, worsen_random, naive):
+        if naive:
+            # return "BAU"
+            return "E"
+        elif improve_target and not worsen_random:
+            # return "Modus operandi"
+            return "A"
+        elif improve_target and worsen_random:
+            # return "Worsen random"
+            return "B"
+        elif not improve_target and not worsen_random:
+            # return "Only worsen suggested"
+            return "C"
+        elif not improve_target and worsen_random:
+            # return "No improving worsen random"
+            return "D"
+        else:
+            return "WTF?"
+
+    def asf_resolver(asf_name):
+        if asf_name == "pointmethodasf":
+            return "RPM"
+        elif asf_name == "guessasf":
+            return "GUESS"
+        elif asf_name == "stomasf":
+            return "STOM"
+        else:
+            return "WTF?"
+
+    i = 0
+
+    for asf_name in asf_names:
+        for d in deltas:
+            for improve_target in [True, False]:
+                for worsen_random in [False, True]:
+                    f_name_ = (
+                        f"run_{problem_name}_{n_solutions}_per_objective_{n_runs}_{asf_name}_delta_"
+                        f"{int(d*100)}{'_original_' if use_original_problem else '_'}{'pfmissing_' if pareto_as_missing else ''}"
+                        f"{'nochange_' if not improve_target else ''}{'random' if worsen_random else ''}{'naive' if naive else ''}"
+                    )
+                    f_name = f_name_ + ".xlsx"
+
+                    df = pd.read_excel(f"{DATA_DIR}/{f_name}", engine="openpyxl")
+                    # title = f"{problem_name} - N=1000 - delta=0.{d:1d} - PF as missing - impair random (but not suggested)"
+                    title = f"{problem_name} - N=1000 - delta={int(d*100)} - PF as missing - {f'{n_runs} per objective - '}{'improve target - ' if improve_target else 'do not improve target - '}{'worsen random' if worsen_random else 'do not worsen random'}"
+
+                    relative_imprvs = (
+                        compute_relative_improvements_of_targets_median_and_mad(
+                            df, "f_", n_objectives
+                        )
+                    )
+                    success_rates = compute_target_success_rates(df, n_objectives)
+
+                    """
+                    for i in range(n_objectives):
+                        datum = (
+                            f"f_{i+1}",
+                            success_rates[i, 0],
+                            success_rates[i, 1],
+                            success_rates[i, 2],
+                            relative_imprvs["median"][i],
+                            relative_imprvs["mad"][i],
+                            relative_imprvs["min"][i],
+                            relative_imprvs["max"][i],
+                        )
+                        data.loc[i] = datum
+                    """
+
+                    data.loc[i] = (
+                        f"{int(d*100)}",
+                        asf_resolver(asf_name),
+                        strategy_resolver(improve_target, worsen_random, naive),
+                        np.mean(success_rates[:, 0]),
+                        np.mean(success_rates[:, 1]),
+                        np.mean(success_rates[:, 2]),
+                        np.mean(relative_imprvs["median"]),
+                        np.mean(relative_imprvs["mad"]),
+                        np.mean(relative_imprvs["min"]),
+                        np.mean(relative_imprvs["max"]),
+                        f"{np.mean(relative_imprvs['mean95']):.2f}({relative_imprvs['outliers']/(n_objectives*n_runs)*100:.2f})",
+                        np.mean(relative_imprvs["std_mad"]),
+                    )
+
+                    print(data)
+
+                    latex_fname = DATA_DIR + "/../_tables/" + f_name_ + ".tex"
+                    table_tex = data.to_latex(
+                        formatters=formatters,
+                        index=False,
+                    )
+                    data_tex = "\n".join(
+                        map(lambda x: x.strip(), table_tex.splitlines()[4:-2])
+                    )
+
+                    i += 1
+
+    # naive once
+    improve_target = True
+    worsen_random = False
+    naive = True
     for d in deltas:
-        f_name_ = (
-            f"run_{problem_name}_{n_solutions}_per_objective_{n_runs}_{asf_name}_delta_"
-            f"{int(d*100)}{'_original_' if use_original_problem else '_'}{'pfmissing_' if pareto_as_missing else ''}"
-            f"{'nochange_' if not improve_target else ''}{'random' if worsen_random else ''}{'naive' if naive else ''}"
-        )
-        f_name = f_name_ + ".xlsx"
-
-        df = pd.read_excel(f"{DATA_DIR}/{f_name}", engine="openpyxl")
-        # title = f"{problem_name} - N=1000 - delta=0.{d:1d} - PF as missing - impair random (but not suggested)"
-        title = f"{problem_name} - N=1000 - delta={int(d*100)} - PF as missing - {f'{n_runs} per objective - '}{'improve target - ' if improve_target else 'do not improve target - '}{'worsen random' if worsen_random else 'do not worsen random'}"
-
-        relative_imprvs = compute_relative_improvements_of_targets(df, "f_", 5)
-        success_rates = compute_target_success_rates(df, n_objectives)
-
-        data = pd.DataFrame(
-            columns=(
-                "Objective",
-                "Success",
-                "Neutral",
-                "Failure",
-                "mean",
-                "std",
-                "min",
-                "max",
+        for asf_name in asf_names:
+            f_name_ = (
+                f"run_{problem_name}_{n_solutions}_per_objective_{n_runs}_{asf_name}_delta_"
+                f"{int(d*100)}{'_original_' if use_original_problem else '_'}{'pfmissing_' if pareto_as_missing else ''}"
+                f"{'nochange_' if not improve_target else ''}{'random' if worsen_random else ''}{'naive' if naive else ''}"
             )
-        )
+            f_name = f_name_ + ".xlsx"
 
-        formatters = {
-            "Success": lambda x: f"{x:.2f}",
-            "Neutral": lambda x: f"{x:.2f}",
-            "Failure": lambda x: f"{x:.2f}",
-            "mean": lambda x: f"{x:.3f}",
-            "std": lambda x: f"{x:.3f}",
-            "min": lambda x: f"{x:.3f}",
-            "max": lambda x: f"{x:.3f}",
-        }
+            df = pd.read_excel(f"{DATA_DIR}/{f_name}", engine="openpyxl")
+            # title = f"{problem_name} - N=1000 - delta=0.{d:1d} - PF as missing - impair random (but not suggested)"
+            title = f"{problem_name} - N=1000 - delta={int(d*100)} - PF as missing - {f'{n_runs} per objective - '}{'improve target - ' if improve_target else 'do not improve target - '}{'worsen random' if worsen_random else 'do not worsen random'}"
 
-        for i in range(n_objectives):
-            datum = (
-                f"f_{i+1}",
-                success_rates[i, 0],
-                success_rates[i, 1],
-                success_rates[i, 2],
-                relative_imprvs["mean"][i],
-                relative_imprvs["std"][i],
-                relative_imprvs["min"][i],
-                relative_imprvs["max"][i],
+            relative_imprvs = compute_relative_improvements_of_targets_median_and_mad(
+                df, "f_", n_objectives
             )
-            data.loc[i] = datum
+            success_rates = compute_target_success_rates(df, n_objectives)
 
-        data.loc[n_objectives + 1] = (
-            "mean",
-            np.mean(success_rates[:, 0]),
-            np.mean(success_rates[:, 1]),
-            np.mean(success_rates[:, 2]),
-            np.mean(relative_imprvs["mean"]),
-            np.mean(relative_imprvs["std"]),
-            np.mean(relative_imprvs["min"]),
-            np.mean(relative_imprvs["max"]),
-        )
+            """
+            for i in range(n_objectives):
+                datum = (
+                    f"f_{i+1}",
+                    success_rates[i, 0],
+                    success_rates[i, 1],
+                    success_rates[i, 2],
+                    relative_imprvs["median"][i],
+                    relative_imprvs["mad"][i],
+                    relative_imprvs["min"][i],
+                    relative_imprvs["max"][i],
+                )
+                data.loc[i] = datum
+            """
 
-        latex_fname = DATA_DIR + "/../_tables/" + f_name_ + ".tex"
-        table_tex = data.to_latex(
-            formatters=formatters,
-            index=False,
-        )
-        data_tex = "\n".join(map(lambda x: x.strip(), table_tex.splitlines()[4:-2]))
+            data.loc[i] = (
+                f"{int(d*100)}",
+                asf_resolver(asf_name),
+                strategy_resolver(improve_target, worsen_random, naive),
+                np.mean(success_rates[:, 0]),
+                np.mean(success_rates[:, 1]),
+                np.mean(success_rates[:, 2]),
+                np.mean(relative_imprvs["median"]),
+                np.mean(relative_imprvs["mad"]),
+                np.mean(relative_imprvs["min"]),
+                np.mean(relative_imprvs["max"]),
+                f"{np.mean(relative_imprvs['mean95']):.2f}({relative_imprvs['outliers']/(n_objectives*n_runs)*100:.2f})",
+                np.mean(relative_imprvs["std_mad"]),
+            )
 
-        with open(latex_fname, "w") as f:
-            f.write(data_tex)
+            print(data)
+
+            i += 1
+
+            # with open(latex_fname, "w") as f:
+            # f.write(data_tex)
+
+    table_tex = data.to_latex(
+        DATA_DIR + "/../_tables/big_table_river.tex",
+        formatters=formatters,
+        index=False,
+    )
 
 """
     # missing vs delta
