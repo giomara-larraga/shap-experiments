@@ -76,11 +76,11 @@ def plot_mean_rates_per_strategy(data, problem_name):
     plt.show()
 
 
-def plot_mean_changes_per_strategy_and_delta(data, problem_name):
-    cols = data[["Strategy", "Delta", "median", "MAD"]]
+def plot_mean_changes_per_strategy_and_delta(data, problem_name, what):
+    data["Mean_95"] = data["Mean_95"].apply(lambda x: float(x[: x.rfind("(")]))
+    cols = data[["Strategy", "Delta", what]]
 
     grouped_mean = cols.groupby(["Strategy", "Delta"]).mean()
-    grouped_std = cols.groupby(["Strategy", "Delta"]).std()
 
     label_names = ["A", "B", "C", "D", "E"]
     labels = np.arange(len(label_names))
@@ -91,15 +91,9 @@ def plot_mean_changes_per_strategy_and_delta(data, problem_name):
     values_15 = values[np.arange(2, 20, 4), 0]
     values_20 = values[np.arange(3, 20, 4), 0]
 
-    values_5_err = values[np.arange(0, 20, 4), 1]
-    values_10_err = values[np.arange(1, 20, 4), 1]
-    values_15_err = values[np.arange(2, 20, 4), 1]
-    values_20_err = values[np.arange(3, 20, 4), 1]
-
     fig, ax = plt.subplots()
 
     width = 0.20
-    capsize = 3
     color_5 = "#a8e6cf"
     color_10 = "#dcedc1"
     color_15 = "#ffd3b6"
@@ -151,7 +145,10 @@ def plot_mean_changes_per_strategy_and_delta(data, problem_name):
     ax.set_ylabel("Change (%)")
     ax.set_xlabel("Strategy")
     ax.set_title(
-        f"Average change observed in the target for each strategy and\nperturbation $\delta$ for the {problem_name} problem"
+        (
+            "The average of the median absolute deviations observed in "
+            f"the \ntarget for each strategy and perturbation $\delta$ for the {problem_name} problem"
+        )
     )
     ax.set_xticks(labels + 3 * width / 2)
     ax.set_xticklabels(label_names)
@@ -163,8 +160,7 @@ def plot_mean_changes_per_strategy_and_delta(data, problem_name):
 
     print(grouped_mean)
 
-    # ax.set_ylim((0))
-    plt.gca().invert_yaxis()
+    # plt.gca().invert_yaxis()
     plt.show()
 
 
@@ -173,5 +169,5 @@ if __name__ == "__main__":
         "/home/kilo/workspace/shap-experiments/_results/car_excel.ods",
     )
     problem_name = "car"
-    # plot_mean_rates_per_strategy(data, problem_name)
-    plot_mean_changes_per_strategy_and_delta(data, problem_name)
+    plot_mean_rates_per_strategy(data, problem_name)
+    # plot_mean_changes_per_strategy_and_delta(data, problem_name, "MAD")
