@@ -68,6 +68,9 @@ def generate_validation_data_global(
     ideal = np.min(pareto_f[:, 0:n_objectives], axis=0)
     nadir = np.max(pareto_f[:, 0:n_objectives], axis=0)
 
+    print(f"Ideal: {ideal}")
+    print(f"Nadir: {nadir}")
+
     problem = DiscreteDataProblem(df, variable_names, objective_names, nadir, ideal)
 
     # asf = SimpleASF(np.array([1 for _ in range(n_objectives)]))
@@ -258,7 +261,7 @@ if __name__ == "__main__":
     # var_names = ["x_1", "x_2", "x_3", "x_4", "x_5"]
     var_names = ["x_1", "x_2"]
     obj_names = ["f_1", "f_2", "f_3", "f_4", "f_5"]
-    n_solutions = 10171
+    n_solutions = 10178
     n_runs = 200
 
     use_original_problem = True
@@ -272,15 +275,19 @@ if __name__ == "__main__":
 
     # improve_target = True
     # worsen_random = True
+    # naive = False
 
     # improve_target = False
     # worsen_random = True
+    # naive = False
 
     # improve_target = True
     # worsen_random = False
+    # naive = False
 
     # improve_target = False
     # worsen_random = False
+    # naive = False
 
     worsen_random = False
     improve_target = True
