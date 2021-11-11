@@ -19,7 +19,7 @@ def river_pollution_problem():
             - 0.03 * x[:, 0]
             - 0.02 * x[:, 1]
             - 0.01 / (1.39 - x[:, 0] ** 2)
-            - 0.30 / (1.39 + x[:, 1] ** 2)
+            - 0.30 / (1.39 - x[:, 1] ** 2)
         )
 
     def f_3(x: np.ndarray) -> np.ndarray:
@@ -28,7 +28,7 @@ def river_pollution_problem():
 
     def f_4(x: np.ndarray) -> np.ndarray:
         x = np.atleast_2d(x)
-        return -0.96 - 0.96 / (1.09 - x[:, 1] ** 2)
+        return -0.96 + 0.96 / (1.09 - x[:, 1] ** 2)
 
     def f_5(x: np.ndarray) -> np.ndarray:
         return np.max([np.abs(x[:, 0] - 0.65), np.abs(x[:, 1] - 0.65)], axis=0)
