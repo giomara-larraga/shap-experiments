@@ -66,10 +66,11 @@ def compute_pareto_front(
 
 def main():
     # problem_x = test_problem_builder("DTLZ2", 8, 5)
-    problem = test_problem_builder("DTLZ2", 5, 3)
+    # problem = test_problem_builder("DTLZ2", 5, 3)
+    problem = river_pollution_problem()
 
     file_path = str(pathlib.Path(__file__).parent.resolve())
-    file_name = "../data/DTLZ2_5x_3f_"
+    file_name = "../data/river_pollution_"
 
     compute_pareto_front(
         problem, file_path=file_path, file_name=file_name, pop_size=10000
