@@ -274,7 +274,7 @@ def how_to_improve_objective_i(
             msg = (
                 "Each objective was impaired. The reference point given was too demanding overall. "
                 f"Try to improve objective {objective_names[objective_i]} to improve its value while impairing the "
-                f"value of objective {objective_names[worst_effect]}, which had the most impairing effect on "
+                f"value of objective {objective_names[worst_effect]}, which had the most impairing effect "
                 f"on objective {objective_names[objective_i]}."
             )
             return msg, objective_i, worst_effect, 0
