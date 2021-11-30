@@ -272,10 +272,12 @@ def how_to_improve_objective_i(
         if worst_effect != objective_i:
             # impair worst_effect, improve i
             msg = (
-                "Each objective was impaired. The reference point given was too demanding overall. "
-                f"Try to improve objective {objective_names[objective_i]} to improve its value while impairing the "
-                f"value of objective {objective_names[worst_effect]}, which had the most impairing effect "
-                f"on objective {objective_names[objective_i]}."
+                "Explanation: Each objective value in the solution is worse when compared to the reference point. "
+                "The reference point given was too demanding. "
+                f"The component {objective_names[worst_effect]} in the reference point had the most impairing effect "
+                f"on objective {objective_names[objective_i]} in the solution."                
+                f"\nSuggestion: Try improving the component {objective_names[objective_i]} and impairing the component "
+                f"{objective_names[worst_effect]}."
             )
             return msg, objective_i, worst_effect, 0
         else:
@@ -286,10 +288,11 @@ def how_to_improve_objective_i(
             second_worst = np.argmax(row)
 
             msg = (
-                f"Each objective was impaired. The most impairing effect was due to objective {objective_names[objective_i]}."
-                f"Try to improve objective {objective_names[objective_i]} to improve its value while impairing the "
-                f"value of objective {objective_names[second_worst]}, which had the second most impairing effect "
-                f"on objective {objective_names[objective_i]}."
+                f"Explanation: Each objective value in the solution is worse when compared to the reference point. "
+                f"The reference point was too demanding. The component {objective_names[objective_i]} in the reference point "
+                f"had the most impairing effect on {objective_names[objective_i]} in the solution. The component "
+                f"{objective_names[second_worst]} had the second most impairing effect on the objective {objective_names[objective_i]}."
+                f"\nSuggestion: Try improving the component {objective_names[objective_i]} and impairing the component {objective_names[second_worst]}."
             )
             return msg, objective_i, second_worst, 1
 
@@ -310,20 +313,21 @@ def how_to_improve_objective_i(
             row[objective_i] = -np.inf
             second_cause = np.argmax(row)
             msg = (
-                f"Each objective was improved. Objective {objective_names[objective_i]} had the least improving effect on itself."
-                f"To improve objective {objective_names[objective_i]}, "
-                f"improve its value while impairing the value of objective {objective_names[second_cause]}, "
-                f"which had the second least improving effect on {objective_names[objective_i]}."
+                f"Each objective value in the solution had a better value when compared to the reference point."
+                f"The reference point was pessimistic. The component {objective_names[objective_i]} in the reference point "
+                f"had the least improving effect on objective {objective_names[objective_i]} in the solution. The component "
+                f"{objective_names[second_cause]} had the second least improving effect on the objective {objective_names[objective_i]}."
+                f"\nSuggestion: Try improving the component {objective_names[objective_i]} and impairing the component {objective_names[second_cause]}."
             )
 
             return msg, objective_i, second_cause, 2
         else:
             # improve i, impair first_cause
             msg = (
-                f"Each objective was improved. "
-                f"To improve objective {objective_names[objective_i]}, "
-                f"improve its value while impairing the value of objective {objective_names[first_cause]}, "
-                f"which had the least improving effect on {objective_names[objective_i]}."
+                f"Each objective value in the solution had a bettern value when compared to the reference point. "
+                f"The reference point was pessimistic. The component {objective_names[first_cause]} in the refence point "
+                f"had the least improving effect on the objective {objective_names[objective_i]} in the solution."
+                f"\nSuggestion: Try improving the component {objective_names[objective_i]} and impairing the component {objective_names[first_cause]}."
             )
             return msg, objective_i, first_cause, 3
 
@@ -338,9 +342,10 @@ def how_to_improve_objective_i(
             # no objective had a positive effect on i
             # improve i, impair objective with greatest negative effect
             msg = (
-                f"None of the objectives had an improving effect. To improve objective {objective_names[objective_i]}, "
-                f"Improve its value while impairing the value of objective {objective_names[worst_effect]}, which had "
-                f"the least positive effect on objective {objective_names[objective_i]}."
+                f"Explanation: None of the component in the reference point had an improving effect on the objective {objective_names[objective_i]} "
+                f"in the solution. The component {objective_names[worst_effect]} in the reference point had the most impairing effect on "
+                f"objective {objective_names[objective_i]} in the solution."
+                f"\nSuggestion: Try improving the component {objective_names[objective_i]} and impairing the component {objective_names[worst_effect]}."
             )
             return msg, objective_i, worst_effect, 4
 
@@ -352,9 +357,10 @@ def how_to_improve_objective_i(
             least_positive = np.argmax(row)
 
             msg = (
-                f"None of the objectives had an impairing effect. To improve objective {objective_names[objective_i]}, "
-                f"improve its value while impairing the value of objective {objective_names[least_positive]}, "
-                f"which had the least improving effect on objective {objective_names[objective_i]}."
+                f"Explanation: None of the objectives in the reference point had an impairing effect on objective {objective_names[objective_i]} "
+                f"in the solution. Objective {objective_names[least_positive]} in the reference point had the least improving effect on objective "
+                f"{objective_names[objective_i]} in the solution."
+                f"\nSuggestion: Try improving the component {objective_names[objective_i]} and impairing the component {objective_names[least_positive]}."
             )
 
             return msg, objective_i, least_positive, 5
@@ -363,9 +369,9 @@ def how_to_improve_objective_i(
             # some objective had a positive and some objective had a negative effect on i
             # improve i, impair objective with worst effect
             msg = (
-                f"Objective {objective_names[objective_i]} was most improved by the value of objective {objective_names[best_effect]} and "
-                f"most impaired by the value of objective {objective_names[worst_effect]}. To improve the value of objective "
-                f"{objective_names[objective_i]}, try improving its value while impairing the value of objective {objective_names[worst_effect]}."
+                f"Explanation: The objective {objective_names[objective_i]} was most improved in the solution by the component "
+                f"{objective_names[best_effect]} and most impaired by the component {objective_names[worst_effect]} in the reference point."
+                f"\nSuggestion: Try improving the component {objective_names[objective_i]} and impairing the component {objective_names[worst_effect]}."
             )
 
             return msg, objective_i, worst_effect, 6
@@ -379,10 +385,10 @@ def how_to_improve_objective_i(
         second_worst = np.argmax(row)
 
         msg = (
-            f"The value for objective {objective_names[objective_i]} had the worst effect on itself. To improve the "
-            f"value of objective {objective_names[objective_i]}, try to improve its value while impairing the value of "
-            f"objective {objective_names[second_worst]}, which had the second most impairing effect on objective "
-            f"{objective_names[objective_i]}."
+            f"Explanation: The objective {objective_names[objective_i]} was most impaired in the solution by its component in "
+            f"the reference point. The component {objective_names[second_worst]} had the second most impairing effect on the "
+            f"objective {objective_names[objective_i]}."
+            f"\nSuggestion: Try improving the component {objective_names[objective_i]} and impairing the component {objective_names[second_worst]}."
         )
         return msg, objective_i, second_worst, 7
 
@@ -395,9 +401,10 @@ def how_to_improve_objective_i(
         least_positive = np.argmax(row)
 
         msg = (
-            f"None of the objective had an impairing effect. To improve objective {objective_names[objective_i]}, "
-            f"try to improve its value while impairing the value of objective {objective_names[least_positive]}, which "
-            f"had the least improving effect on objective {objective_names[objective_i]}."
+            f"Explanation: None of the objectives in the reference point had an impairing effect on objective {objective_names[objective_i]} "
+            f"in the solution. Objective {objective_names[least_positive]} in the reference point had the least improving effect on objective "
+            f"{objective_names[objective_i]} in the solution."
+            f"\nSuggestion: Try improving the component {objective_names[objective_i]} and impairing the component {objective_names[least_positive]}."
         )
         return msg, objective_i, least_positive, 8
 
@@ -405,10 +412,9 @@ def how_to_improve_objective_i(
     if objective_i == best_effect:
         # improve i, impair objective with worst effect
         msg = (
-            f"The value for objective {objective_names[objective_i]} had the best effect on itself. To improve the "
-            f"value of objective {objective_names[objective_i]}, try to improve its value while impairing the value of "
-            f"objective {objective_names[worst_effect]}, which had the most impairing effect on objective "
-            f"{objective_names[objective_i]}."
+            f"Explanation: The objective {objective_names[objective_i]} was most improved in the solution by its component in "
+            f"the reference point. The component {objective_names[worst_effect]} had the most impairing effect of objective {objective_names[objective_i]}."
+            f"\nSuggestion: Try improving the component {objective_names[objective_i]} and impairing the component {objective_names[worst_effect]}."
         )
         return msg, objective_i, worst_effect, 9
 
