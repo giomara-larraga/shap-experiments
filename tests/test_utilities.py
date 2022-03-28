@@ -1,10 +1,15 @@
-from shapley_values.utilities import Normalizer, generate_black_box, generate_missing_data
+from shapley_values.utilities import (
+    Normalizer,
+    generate_black_box,
+    generate_missing_data,
+)
 from shapley_values.problems import river_pollution_problem
 from desdeo_tools.scalarization import PointMethodASF
 from desdeo_problem.problem import DiscreteDataProblem
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
+
 
 def test_scale():
     low_levels = np.array([-1, -1.5, 2])
@@ -36,14 +41,17 @@ def test_scale():
     matrix = np.stack((low, middle, high))
     matrix_scaled = normalizer.scale(matrix)
 
-    npt.assert_almost_equal(matrix_scaled, np.squeeze(np.stack((low_scaled, middle_scaled, high_scaled))))
+    npt.assert_almost_equal(
+        matrix_scaled, np.squeeze(np.stack((low_scaled, middle_scaled, high_scaled)))
+    )
 
     matrix_inverse = normalizer.inverse_scale(matrix_scaled)
 
     npt.assert_almost_equal(matrix_inverse, np.stack((low, middle, high)))
 
+
 def test_bb_w_normalizer():
-    df = pd.read_csv("./data/river_pollution_10000.csv")
+    df = pd.read_csv("./data/river_pollution_10178.csv")
     pareto_f = df.to_numpy()
 
     n_objectives = 5

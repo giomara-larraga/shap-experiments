@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Union
 
 import numpy as np
 
@@ -275,7 +275,7 @@ def how_to_improve_objective_i(
                 "Explanation: Each objective value in the solution is worse when compared to the reference point. "
                 "The reference point given was too demanding. "
                 f"The component {objective_names[worst_effect]} in the reference point had the most impairing effect "
-                f"on objective {objective_names[objective_i]} in the solution."                
+                f"on objective {objective_names[objective_i]} in the solution."
                 f"\nSuggestion: Try improving the component {objective_names[objective_i]} and impairing the component "
                 f"{objective_names[worst_effect]}."
             )
@@ -436,6 +436,33 @@ def how_to_improve_objective_i(
 
     return "Impossible outcome", -1, -1
     """
+
+
+def split_suggestion_explanation(s: str) -> Tuple[str, str]:
+    """Splits a string output returned by 'how_to_improve_objective_i' into a suggestion and explanation parts. The
+    parts should be separated by a newline character. If no newline character is found, then the suggestion and
+    explanation parts returned will be identical.
+
+    Args:
+        s (str): the string containing an explanation and suggestion part to be split.
+
+    Returns:
+        Tuple[str, str]: the tuple containing the suggestion and explanations parts, respectively.
+
+    Note:
+        If no newline if found in the input s, then the suggestion and explanation part in the output
+        Tuple will be the same as the input s.
+    """
+    # split at the newline
+    ind = s.find("\n")
+    if ind != -1:
+        explanation = s[:ind]
+        suggestion = s[ind + 1 :]
+    else:
+        suggestion = s
+        explanation = s
+
+    return (suggestion, explanation)
 
 
 if __name__ == "__main__":
