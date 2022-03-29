@@ -313,7 +313,7 @@ def how_to_improve_objective_i(
             row[objective_i] = -np.inf
             second_cause = np.argmax(row)
             msg = (
-                f"Each objective value in the solution had a better value when compared to the reference point."
+                f"Explanation: Each objective value in the solution had a better value when compared to the reference point."
                 f"The reference point was pessimistic. The component {objective_names[objective_i]} in the reference point "
                 f"had the least improving effect on objective {objective_names[objective_i]} in the solution. The component "
                 f"{objective_names[second_cause]} had the second least improving effect on the objective {objective_names[objective_i]}."
@@ -324,7 +324,7 @@ def how_to_improve_objective_i(
         else:
             # improve i, impair first_cause
             msg = (
-                f"Each objective value in the solution had a bettern value when compared to the reference point. "
+                f"Explanation: Each objective value in the solution had a bettern value when compared to the reference point. "
                 f"The reference point was pessimistic. The component {objective_names[first_cause]} in the refence point "
                 f"had the least improving effect on the objective {objective_names[objective_i]} in the solution."
                 f"\nSuggestion: Try improving the component {objective_names[objective_i]} and impairing the component {objective_names[first_cause]}."
